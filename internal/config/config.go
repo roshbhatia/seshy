@@ -112,7 +112,14 @@ func WriteDefault() error {
 }
 
 // GetSessionsRoot returns the sessions directory.
+// Respects sessionsDir in config if set, otherwise falls back to XDG_STATE_HOME.
 func GetSessionsRoot() string {
+	if data, err := os.ReadFile(ConfigPath()); err == nil {
+		var cfg Config
+		if yaml.Unmarshal(data, &cfg) == nil && cfg.SessionsDir != "" {
+			return expandTilde(cfg.SessionsDir)
+		}
+	}
 	var base string
 	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
 		base = xdg

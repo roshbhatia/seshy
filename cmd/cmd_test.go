@@ -309,16 +309,16 @@ func TestDeleteAliasRm(t *testing.T) {
 	}
 }
 
-func TestDeleteAliasRemove(t *testing.T) {
+func TestDeleteRmAliasDuplicate(t *testing.T) {
 	isolatedRoot(t)
 	tmp := t.TempDir()
 	repo := filepath.Join(tmp, "r")
 	setupGitRepo(t, repo)
-	_, _ = session.Create("remove-me", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"})
+	_, _ = session.Create("rm-me2", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"})
 
-	_, _, err := runCmd("remove", "--force", "remove-me")
+	_, _, err := runCmd("rm", "--force", "rm-me2")
 	if err != nil {
-		t.Fatalf("remove alias: %v", err)
+		t.Fatalf("rm alias: %v", err)
 	}
 }
 

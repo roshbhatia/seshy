@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/hook"
@@ -16,7 +19,7 @@ var forceDelete bool
 var deleteCmd = &cobra.Command{
 	Use:     "delete [name]",
 	Short:   "Delete a session",
-	Aliases: []string{"rm", "remove"},
+	Aliases: []string{"rm"},
 	Args:    cobra.MaximumNArgs(1),
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
@@ -57,6 +60,9 @@ var deleteCmd = &cobra.Command{
 			}
 			selected, err := runPicker(cfg.SessionPicker, names)
 			if err != nil {
+				if errors.Is(err, errCancelled) {
+					return nil
+				}
 				return err
 			}
 			if len(selected) == 0 {
@@ -69,9 +75,21 @@ var deleteCmd = &cobra.Command{
 			return fmt.Errorf("session %s not found", ui.AccentBold(name))
 		}
 
-		// Run pre-delete hooks
+		if !forceDelete {
+			fmt.Fprintf(os.Stderr, "Delete session %s and its worktrees/branches? [y/N] ", ui.AccentBold(name))
+			reader := bufio.NewReader(os.Stdin)
+			answer, _ := reader.ReadString('\n')
+			answer = strings.TrimSpace(strings.ToLower(answer))
+			if answer != "y" && answer != "yes" {
+				fmt.Fprintln(os.Stderr, ui.Info("Cancelled."))
+				return nil
+			}
+		}
+
+		// Run pre-delete hooks with full repo info
 		sessionPath, _ := session.GetPath(name)
-		data := session.BuildTemplateData(name, sessionPath, nil)
+		repoInfos := session.GetSessionRepoInfos(sessionPath)
+		data := session.BuildTemplateData(name, sessionPath, repoInfos)
 		hook.Run("pre-delete", cfg.Hooks.PreDelete, data, sessionPath)
 
 		if err := session.Delete(name); err != nil {
@@ -84,6 +102,6 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, "Skip confirmation / require name arg")
+	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(deleteCmd)
 }

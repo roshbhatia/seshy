@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,6 +38,11 @@ func IsGitRepo(path string) bool {
 // GetRepoBasename returns the basename of a repository path.
 func GetRepoBasename(path string) string {
 	return filepath.Base(path)
+}
+
+// GetCurrentBranch returns the current branch name for a git repo or worktree.
+func GetCurrentBranch(path string) (string, error) {
+	return gitExec(path, "rev-parse", "--abbrev-ref", "HEAD")
 }
 
 // disambiguatedName generates a unique worktree directory name using bare basename.
@@ -111,11 +117,14 @@ func CreateSymlink(target, sessionPath string) (string, error) {
 }
 
 // CleanupWorktrees removes all git worktrees in a session directory and deletes their branches.
+// Continues on individual failures and returns a combined error if any worktree could not be removed.
 func CleanupWorktrees(sessionPath string) error {
 	entries, err := os.ReadDir(sessionPath)
 	if err != nil {
 		return fmt.Errorf("failed to read session directory: %w", err)
 	}
+
+	var errs []error
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -129,30 +138,68 @@ func CleanupWorktrees(sessionPath string) error {
 			continue
 		}
 
-		// Get the branch name before removing the worktree
 		branchName, _ := gitExec(entryPath, "rev-parse", "--abbrev-ref", "HEAD")
 
 		gitCommonDir, err := gitExec(entryPath, "rev-parse", "--git-common-dir")
 		if err != nil {
+			errs = append(errs, fmt.Errorf("could not locate main repo for %s: %w", entry.Name(), err))
 			continue
 		}
 
 		mainRepoPath := filepath.Dir(gitCommonDir)
 
-		// Remove the worktree
-		_, removeErr := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force")
-		if removeErr != nil {
-			gitExec(mainRepoPath, "worktree", "prune")
+		if _, removeErr := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); removeErr != nil {
+			if _, pruneErr := gitExec(mainRepoPath, "worktree", "prune"); pruneErr != nil {
+				errs = append(errs, fmt.Errorf("failed to remove worktree %s: %w", entry.Name(), removeErr))
+				continue
+			}
 		}
 
-		// Delete the branch (non-fatal on failure)
 		if branchName != "" && branchName != "HEAD" {
-			// Check if this branch is the current branch of the main repo
 			mainBranch, _ := gitExec(mainRepoPath, "rev-parse", "--abbrev-ref", "HEAD")
 			if mainBranch != branchName {
 				gitExec(mainRepoPath, "branch", "-D", branchName)
 			}
-			// If it's the current branch, skip deletion (can't delete checked-out branch)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+// RemoveRepoEntry removes a single repo entry from a session directory.
+// For git worktrees: removes the worktree and deletes the branch.
+// For symlinks: removes the symlink.
+func RemoveRepoEntry(sessionPath, repoName string) error {
+	entryPath := filepath.Join(sessionPath, repoName)
+	info, err := os.Lstat(entryPath)
+	if err != nil {
+		return fmt.Errorf("repo %q not found in session: %w", repoName, err)
+	}
+
+	if info.Mode()&os.ModeSymlink != 0 {
+		return os.Remove(entryPath)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%q is not a directory or symlink", repoName)
+	}
+
+	branchName, _ := gitExec(entryPath, "rev-parse", "--abbrev-ref", "HEAD")
+	gitCommonDir, err := gitExec(entryPath, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return os.RemoveAll(entryPath)
+	}
+
+	mainRepoPath := filepath.Dir(gitCommonDir)
+
+	if _, err := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); err != nil {
+		return fmt.Errorf("failed to remove worktree: %w", err)
+	}
+
+	if branchName != "" && branchName != "HEAD" {
+		mainBranch, _ := gitExec(mainRepoPath, "rev-parse", "--abbrev-ref", "HEAD")
+		if mainBranch != branchName {
+			gitExec(mainRepoPath, "branch", "-D", branchName)
 		}
 	}
 

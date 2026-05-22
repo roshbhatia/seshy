@@ -303,6 +303,88 @@ func BuildTemplateData(name, sessionPath string, repos []RepoInfo) tmpl.Template
 	return tmpl.NewTemplateData(name, sessionPath, repoData)
 }
 
+// GetSessionRepoInfos returns RepoInfo for every repo entry in the session directory.
+func GetSessionRepoInfos(sessionPath string) []RepoInfo {
+	entries, err := os.ReadDir(sessionPath)
+	if err != nil {
+		return nil
+	}
+	var repos []RepoInfo
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		entryPath := filepath.Join(sessionPath, e.Name())
+		info, err := os.Lstat(entryPath)
+		if err != nil {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(entryPath)
+			if err != nil {
+				continue
+			}
+			resolved, _ := filepath.EvalSymlinks(target)
+			if resolved == "" {
+				resolved = target
+			}
+			repos = append(repos, RepoInfo{Name: e.Name(), Path: entryPath, SourcePath: resolved})
+		} else if info.IsDir() {
+			mainRepo, err := GetWorktreeMainRepo(entryPath)
+			if err != nil {
+				continue
+			}
+			branch, _ := GetCurrentBranch(entryPath)
+			repos = append(repos, RepoInfo{Name: e.Name(), Path: entryPath, SourcePath: mainRepo, Branch: branch})
+		}
+	}
+	return repos
+}
+
+// RenameSession renames a session directory and repairs git worktree registrations.
+// Branch names are not changed.
+func RenameSession(oldName, newName string) error {
+	if err := ValidateSessionName(newName); err != nil {
+		return err
+	}
+	if !Exists(oldName) {
+		return fmt.Errorf("session '%s' not found", oldName)
+	}
+	if Exists(newName) {
+		return fmt.Errorf("session '%s' already exists", newName)
+	}
+
+	root := config.GetSessionsRoot()
+	oldPath := filepath.Join(root, oldName)
+	newPath := filepath.Join(root, newName)
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("failed to rename session: %w", err)
+	}
+
+	// After the move, repair each main repo's record of where its worktrees live.
+	// Group moved worktrees by main repo so we can issue one repair call per repo.
+	mainToWorktrees := make(map[string][]string)
+	entries, _ := os.ReadDir(newPath)
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		entryPath := filepath.Join(newPath, e.Name())
+		mainRepo, err := GetWorktreeMainRepo(entryPath)
+		if err != nil {
+			continue
+		}
+		mainToWorktrees[mainRepo] = append(mainToWorktrees[mainRepo], entryPath)
+	}
+	for mainRepo, worktrees := range mainToWorktrees {
+		args := append([]string{"worktree", "repair"}, worktrees...)
+		gitExec(mainRepo, args...)
+	}
+
+	return nil
+}
+
 // Delete removes a session and cleans up worktrees + branches.
 func Delete(name string) error {
 	sessionPath, err := GetPath(name)

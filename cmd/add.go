@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -96,6 +97,9 @@ var addCmd = &cobra.Command{
 
 			selected, err := runPicker(cfg.Picker, available)
 			if err != nil {
+				if errors.Is(err, errCancelled) {
+					return nil
+				}
 				return err
 			}
 			repos = selected
@@ -116,7 +120,7 @@ var addCmd = &cobra.Command{
 		}
 
 		// Build template data with ALL repos (existing + new)
-		allRepos := getAllRepoInfos(sessionPath, newRepos)
+		allRepos := session.GetSessionRepoInfos(sessionPath)
 		data := session.BuildTemplateData(name, sessionPath, allRepos)
 
 		// Render per-repo templates for NEW repos only
@@ -154,46 +158,6 @@ var addCmd = &cobra.Command{
 	},
 }
 
-// getAllRepoInfos builds a complete list of RepoInfos by scanning the session dir.
-func getAllRepoInfos(sessionPath string, newRepos []session.RepoInfo) []session.RepoInfo {
-	sources, _ := session.ListRepoSources(sessionPath)
-	var all []session.RepoInfo
-
-	// Build map of new repos for quick lookup
-	newMap := make(map[string]session.RepoInfo, len(newRepos))
-	for _, r := range newRepos {
-		newMap[r.Path] = r
-	}
-
-	entries, err := os.ReadDir(sessionPath)
-	if err != nil {
-		return newRepos
-	}
-	for _, e := range entries {
-		if e.Name()[0] == '.' {
-			continue
-		}
-		entryPath := filepath.Join(sessionPath, e.Name())
-		if ri, ok := newMap[entryPath]; ok {
-			all = append(all, ri)
-		} else {
-			// Existing repo — find source
-			source := ""
-			for _, s := range sources {
-				if filepath.Base(s) == e.Name() || filepath.Base(entryPath) == e.Name() {
-					source = s
-					break
-				}
-			}
-			all = append(all, session.RepoInfo{
-				Name:       e.Name(),
-				Path:       entryPath,
-				SourcePath: source,
-			})
-		}
-	}
-	return all
-}
 
 func init() {
 	addCmd.Flags().StringVarP(&addBranch, "branch", "b", "", "Override branch name for all worktrees")

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,6 +59,9 @@ var newCmd = &cobra.Command{
 			candidates = prependDefaults(cfg.DefaultRepos, candidates)
 			selected, err := runPicker(cfg.Picker, candidates)
 			if err != nil {
+				if errors.Is(err, errCancelled) {
+					return nil
+				}
 				return err
 			}
 			repos = selected
