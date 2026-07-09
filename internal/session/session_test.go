@@ -12,12 +12,14 @@ import (
 // helpers
 // ---------------------------------------------------------------------------
 
-// isolatedRoot sets XDG_STATE_HOME to a temp dir scoped to this test and
-// returns a cleanup function.
+// isolatedRoot sets XDG_STATE_HOME and XDG_CONFIG_HOME to per-test temp dirs.
+// Both must be isolated: a real config with sessionsDir overrides XDG_STATE_HOME
+// and would cause tests to see real sessions.
 func isolatedRoot(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("XDG_STATE_HOME", tmp)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	return tmp
 }
 

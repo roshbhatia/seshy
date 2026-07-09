@@ -146,7 +146,16 @@ func CleanupWorktrees(sessionPath string) error {
 			continue
 		}
 
+		if !filepath.IsAbs(gitCommonDir) {
+			gitCommonDir = filepath.Join(entryPath, gitCommonDir)
+		}
 		mainRepoPath := filepath.Dir(gitCommonDir)
+
+		// standalone clone: the entry IS the main repo — skip rather than
+		// trying to remove the main working tree via git worktree remove.
+		if filepath.Clean(mainRepoPath) == filepath.Clean(entryPath) {
+			continue
+		}
 
 		if _, removeErr := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); removeErr != nil {
 			if _, pruneErr := gitExec(mainRepoPath, "worktree", "prune"); pruneErr != nil {
@@ -190,7 +199,16 @@ func RemoveRepoEntry(sessionPath, repoName string) error {
 		return os.RemoveAll(entryPath)
 	}
 
+	if !filepath.IsAbs(gitCommonDir) {
+		gitCommonDir = filepath.Join(entryPath, gitCommonDir)
+	}
 	mainRepoPath := filepath.Dir(gitCommonDir)
+
+	// standalone clone: the entry IS the main repo, not a registered worktree —
+	// git worktree remove would fail, so just delete the directory.
+	if filepath.Clean(mainRepoPath) == filepath.Clean(entryPath) {
+		return os.RemoveAll(entryPath)
+	}
 
 	if _, err := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); err != nil {
 		return fmt.Errorf("failed to remove worktree: %w", err)
@@ -207,10 +225,16 @@ func RemoveRepoEntry(sessionPath, repoName string) error {
 }
 
 // GetWorktreeMainRepo finds the main repository for a worktree.
+// --git-common-dir can return a relative path (e.g. ".git") for standalone
+// clones, so we resolve it relative to the worktree path before computing the
+// parent directory.
 func GetWorktreeMainRepo(worktreePath string) (string, error) {
 	gitCommonDir, err := gitExec(worktreePath, "rev-parse", "--git-common-dir")
 	if err != nil {
 		return "", err
+	}
+	if !filepath.IsAbs(gitCommonDir) {
+		gitCommonDir = filepath.Join(worktreePath, gitCommonDir)
 	}
 	return filepath.Dir(gitCommonDir), nil
 }
@@ -253,6 +277,9 @@ func ListRepoSources(sessionPath string) ([]string, error) {
 			continue
 		}
 
+		if !filepath.IsAbs(gitCommonDir) {
+			gitCommonDir = filepath.Join(entryPath, gitCommonDir)
+		}
 		mainRepoPath := filepath.Dir(gitCommonDir)
 		resolved, err := filepath.EvalSymlinks(mainRepoPath)
 		if err != nil {

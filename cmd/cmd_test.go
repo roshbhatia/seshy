@@ -16,10 +16,13 @@ import (
 // helpers
 // ---------------------------------------------------------------------------
 
-// isolatedRoot redirects XDG_STATE_HOME to a per-test temp dir.
+// isolatedRoot redirects XDG_STATE_HOME and XDG_CONFIG_HOME to per-test temp
+// dirs. Both must be isolated: a real config with sessionsDir set would
+// override XDG_STATE_HOME and make tests see real sessions.
 func isolatedRoot(t *testing.T) {
 	t.Helper()
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 }
 
 func setupGitRepo(t *testing.T, dir string) {

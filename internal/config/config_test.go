@@ -183,6 +183,8 @@ func TestWriteDefault(t *testing.T) {
 }
 
 func TestGetSessionsRootXDGOverride(t *testing.T) {
+	// Isolate config so a real sessionsDir setting doesn't override XDG_STATE_HOME.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", "/tmp/custom-state")
 	root := GetSessionsRoot()
 	if root != "/tmp/custom-state/seshy/sessions" {

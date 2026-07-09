@@ -92,6 +92,10 @@ func branchForRepo(branchFormat, branchOverride, sessionName, repoPath string) (
 type CreateOpts struct {
 	BranchFormat   string
 	BranchOverride string
+	// GitEnabled initialises the session directory as a git repository and
+	// maintains a .gitignore that hides repo entries while keeping coordination
+	// artifacts (AGENTS.md, openspec/, .claude/) trackable.
+	GitEnabled bool
 }
 
 // Create creates a new session with the given repos. Atomic: on failure,
@@ -110,6 +114,13 @@ func Create(name string, repoPaths []string, opts CreateOpts) ([]RepoInfo, error
 
 	if err := os.MkdirAll(sessionPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create session directory: %w", err)
+	}
+
+	if opts.GitEnabled {
+		if _, err := gitExec(sessionPath, "init"); err != nil {
+			os.RemoveAll(sessionPath)
+			return nil, fmt.Errorf("failed to init session git repo: %w", err)
+		}
 	}
 
 	type created struct {
@@ -132,6 +143,11 @@ func Create(name string, repoPaths []string, opts CreateOpts) ([]RepoInfo, error
 	}
 
 	for _, repoPath := range repoPaths {
+		// Resolve to absolute path so symlinks are never self-referential.
+		if abs, err := filepath.Abs(repoPath); err == nil {
+			repoPath = abs
+		}
+
 		if IsGitRepo(repoPath) {
 			branch, err := branchForRepo(opts.BranchFormat, opts.BranchOverride, name, repoPath)
 			if err != nil {
@@ -162,6 +178,13 @@ func Create(name string, repoPaths []string, opts CreateOpts) ([]RepoInfo, error
 				Path:       linkPath,
 				SourcePath: repoPath,
 			})
+		}
+	}
+
+	if opts.GitEnabled {
+		if err := syncSessionIgnore(sessionPath, repoInfos); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("failed to sync session ignore: %w", err)
 		}
 	}
 
@@ -246,6 +269,11 @@ func AddRepos(name string, repoPaths []string, opts CreateOpts) (AddResult, []Re
 	}
 
 	for _, repoPath := range repoPaths {
+		// Resolve to absolute path so symlinks are never self-referential.
+		if abs, err := filepath.Abs(repoPath); err == nil {
+			repoPath = abs
+		}
+
 		resolved := resolveRepoPath(repoPath)
 		if existingSet[resolved] {
 			result.Skipped = append(result.Skipped, repoPath)
@@ -284,6 +312,11 @@ func AddRepos(name string, repoPaths []string, opts CreateOpts) (AddResult, []Re
 
 		result.Added = append(result.Added, repoPath)
 		existingSet[resolved] = true
+	}
+
+	if isSessionGitRepo(sessionPath) {
+		allRepos := GetSessionRepoInfos(sessionPath)
+		_ = syncSessionIgnore(sessionPath, allRepos)
 	}
 
 	return result, newRepos, nil
