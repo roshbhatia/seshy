@@ -17,10 +17,22 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # Keep in step with `version` in cmd/root.go, which is a plain const
-        # rather than an ldflags injection. `sy --version` reads that const, so a
-        # mismatch here would only ever be visible in the store path.
-        version = "4.0.0";
+        # Read from cmd/root.go rather than duplicated here. `sy --version`
+        # prints that const, so a second copy in this file could only ever
+        # drift, and the drift would be invisible: it would show up in the store
+        # path and nowhere a user looks.
+        #
+        # Failing loudly on a parse miss is deliberate. A silent fallback would
+        # reintroduce exactly the duplication this removes.
+        version =
+          let
+            root = builtins.readFile ./cmd/root.go;
+            m = builtins.match ''.*const version = "([0-9]+\.[0-9]+\.[0-9]+)".*'' root;
+          in
+          if m == null then
+            throw "flake.nix: could not read `const version` from cmd/root.go. If the declaration moved, update this matcher rather than hardcoding a version."
+          else
+            builtins.head m;
 
         seshy = pkgs.buildGoModule {
           pname = "seshy";
