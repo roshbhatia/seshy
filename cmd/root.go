@@ -17,6 +17,11 @@ var rootCmd = &cobra.Command{
 	Use:     "sy",
 	Short:   "Session manager for multi-repo development",
 	Version: version,
+	// Runs after argument and flag validation, so usage still prints for a
+	// malformed invocation but not for a runtime failure like "session not found".
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		cmd.SilenceUsage = true
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sessions, err := session.List()
 		if err != nil {
