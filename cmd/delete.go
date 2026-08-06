@@ -17,58 +17,32 @@ import (
 var forceDelete bool
 
 var deleteCmd = &cobra.Command{
-	Use:     "delete [name]",
-	Short:   "Delete a session",
-	Aliases: []string{"rm"},
-	Args:    cobra.MaximumNArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) != 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		sessions, _ := session.List()
-		names := make([]string, len(sessions))
-		for i, s := range sessions {
-			names[i] = s.Name
-		}
-		return names, cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "delete [name]",
+	Short:             "Delete a session",
+	Aliases:           []string{"rm"},
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeSessionNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
 		}
 
-		var name string
+		sessions, err := session.List()
+		if err != nil {
+			return fmt.Errorf("listing sessions: %w", err)
+		}
+		if len(args) == 0 && len(sessions) == 0 {
+			fmt.Fprintln(os.Stderr, ui.Info("No sessions to delete."))
+			return nil
+		}
 
-		if len(args) > 0 {
-			name = args[0]
-		} else {
-			if forceDelete {
-				return fmt.Errorf("--force requires a session name argument")
-			}
-			sessions, err := session.List()
-			if err != nil {
-				return fmt.Errorf("listing sessions: %w", err)
-			}
-			if len(sessions) == 0 {
-				fmt.Fprintln(os.Stderr, ui.Info("No sessions to delete."))
-				return nil
-			}
-			names := make([]string, len(sessions))
-			for i, s := range sessions {
-				names[i] = s.Name
-			}
-			selected, err := runPicker(cfg.SessionPicker, names)
-			if err != nil {
-				if errors.Is(err, errCancelled) {
-					return nil
-				}
-				return err
-			}
-			if len(selected) == 0 {
-				return fmt.Errorf("no session selected")
-			}
-			name = selected[0]
+		name, err := selectSessionName(args, cfg.SessionPicker, sessionNames(sessions))
+		if err != nil {
+			return err
+		}
+		if name == "" {
+			return nil
 		}
 
 		if !session.Exists(name) {
@@ -92,8 +66,8 @@ var deleteCmd = &cobra.Command{
 		data := session.BuildTemplateData(name, sessionPath, repoInfos)
 		hook.Run("pre-delete", cfg.Hooks.PreDelete, data, sessionPath)
 
-		if err := session.Delete(name); err != nil {
-			return fmt.Errorf("failed to delete session: %w", err)
+		if err := session.Delete(name, forceDelete); err != nil {
+			return reportDeleteResult(name, err)
 		}
 
 		fmt.Fprintln(os.Stderr, ui.Successf("Deleted session %s", ui.AccentBold(name)))
@@ -101,7 +75,18 @@ var deleteCmd = &cobra.Command{
 	},
 }
 
+// reportDeleteResult turns a delete error into either a hard failure or, when
+// --force already removed the session, a warning plus success.
+func reportDeleteResult(name string, err error) error {
+	if !errors.Is(err, session.ErrCleanupIncomplete) {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+	fmt.Fprintln(os.Stderr, ui.Warningf("Deleted session %s, but some worktrees or branches were left behind:", ui.AccentBold(name)))
+	fmt.Fprintf(os.Stderr, "  %v\n", err)
+	return nil
+}
+
 func init() {
-	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, "Skip confirmation prompt")
+	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, "Skip confirmation and delete even if worktree cleanup fails")
 	rootCmd.AddCommand(deleteCmd)
 }

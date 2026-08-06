@@ -440,7 +440,7 @@ func TestCleanupWorktrees(t *testing.T) {
 		t.Fatal("worktree was not created")
 	}
 
-	if err := CleanupWorktrees(sessionDir); err != nil {
+	if err := CleanupWorktrees(sessionDir, false); err != nil {
 		t.Fatalf("CleanupWorktrees: %v", err)
 	}
 
@@ -456,13 +456,13 @@ func TestCleanupWorktreesEmptyDir(t *testing.T) {
 	empty := filepath.Join(tmp, "empty")
 	os.MkdirAll(empty, 0755)
 	// Should not error on a directory with no worktrees
-	if err := CleanupWorktrees(empty); err != nil {
+	if err := CleanupWorktrees(empty, false); err != nil {
 		t.Errorf("CleanupWorktrees on empty dir: %v", err)
 	}
 }
 
 func TestCleanupWorktreesNonexistentDir(t *testing.T) {
-	err := CleanupWorktrees("/nonexistent/path/that/does/not/exist")
+	err := CleanupWorktrees("/nonexistent/path/that/does/not/exist", false)
 	if err == nil {
 		t.Error("expected error for nonexistent directory")
 	}
@@ -938,7 +938,7 @@ func TestDelete(t *testing.T) {
 	if _, err := Create("del-test", []string{repoDir}, CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if err := Delete("del-test"); err != nil {
+	if err := Delete("del-test", false); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if Exists("del-test") {
@@ -948,7 +948,7 @@ func TestDelete(t *testing.T) {
 
 func TestDeleteNotFound(t *testing.T) {
 	isolatedRoot(t)
-	if err := Delete("ghost"); err == nil {
+	if err := Delete("ghost", false); err == nil {
 		t.Error("expected error deleting nonexistent session")
 	}
 }
@@ -967,7 +967,7 @@ func TestDeleteCleansUpWorktrees(t *testing.T) {
 	sessionPath, _ := GetPath("wt-del")
 	worktreePath := filepath.Join(sessionPath, "r-wt-del")
 
-	if err := Delete("wt-del"); err != nil {
+	if err := Delete("wt-del", false); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 
@@ -1057,7 +1057,7 @@ func TestDeleteCleansBranches(t *testing.T) {
 		t.Fatal("expected sy/branch-cleanup/* branch to exist before delete")
 	}
 
-	if err := Delete("branch-cleanup"); err != nil {
+	if err := Delete("branch-cleanup", false); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 

@@ -116,9 +116,60 @@ func CreateSymlink(target, sessionPath string) (string, error) {
 	return linkPath, nil
 }
 
+// removeWorktree unregisters a worktree from its main repo.
+//
+// force adds the second --force that git demands before it will remove a
+// locked worktree. Without it, a single locked worktree leaves both the
+// registration and the branch behind.
+func removeWorktree(mainRepoPath, worktreePath string, force bool) error {
+	args := []string{"worktree", "remove", worktreePath, "--force"}
+	if force {
+		args = append(args, "--force")
+	}
+	_, removeErr := gitExec(mainRepoPath, args...)
+	if removeErr == nil {
+		return nil
+	}
+
+	// prune clears registrations whose directory is already gone, which is the
+	// common reason remove fails. It exits 0 even when it clears nothing, so
+	// confirm the registration actually went away rather than trusting it.
+	gitExec(mainRepoPath, "worktree", "prune")
+	if worktreeRegistered(mainRepoPath, worktreePath) {
+		return removeErr
+	}
+	return nil
+}
+
+// worktreeRegistered reports whether mainRepo still lists worktreePath.
+func worktreeRegistered(mainRepoPath, worktreePath string) bool {
+	out, err := gitExec(mainRepoPath, "worktree", "list", "--porcelain")
+	if err != nil {
+		return false
+	}
+	target := realPath(worktreePath)
+	for _, line := range strings.Split(out, "\n") {
+		listed, ok := strings.CutPrefix(line, "worktree ")
+		if ok && realPath(listed) == target {
+			return true
+		}
+	}
+	return false
+}
+
+// realPath resolves symlinks where it can, falling back to a lexical clean for
+// paths that no longer exist.
+func realPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return filepath.Clean(path)
+}
+
 // CleanupWorktrees removes all git worktrees in a session directory and deletes their branches.
 // Continues on individual failures and returns a combined error if any worktree could not be removed.
-func CleanupWorktrees(sessionPath string) error {
+// force is passed through to worktree removal so locked worktrees can be torn down.
+func CleanupWorktrees(sessionPath string, force bool) error {
 	entries, err := os.ReadDir(sessionPath)
 	if err != nil {
 		return fmt.Errorf("failed to read session directory: %w", err)
@@ -157,11 +208,9 @@ func CleanupWorktrees(sessionPath string) error {
 			continue
 		}
 
-		if _, removeErr := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); removeErr != nil {
-			if _, pruneErr := gitExec(mainRepoPath, "worktree", "prune"); pruneErr != nil {
-				errs = append(errs, fmt.Errorf("failed to remove worktree %s: %w", entry.Name(), removeErr))
-				continue
-			}
+		if err := removeWorktree(mainRepoPath, entryPath, force); err != nil {
+			errs = append(errs, fmt.Errorf("failed to remove worktree %s: %w", entry.Name(), err))
+			continue
 		}
 
 		if branchName != "" && branchName != "HEAD" {
@@ -178,7 +227,8 @@ func CleanupWorktrees(sessionPath string) error {
 // RemoveRepoEntry removes a single repo entry from a session directory.
 // For git worktrees: removes the worktree and deletes the branch.
 // For symlinks: removes the symlink.
-func RemoveRepoEntry(sessionPath, repoName string) error {
+// force is passed through to worktree removal so locked worktrees can be removed.
+func RemoveRepoEntry(sessionPath, repoName string, force bool) error {
 	entryPath := filepath.Join(sessionPath, repoName)
 	info, err := os.Lstat(entryPath)
 	if err != nil {
@@ -210,7 +260,7 @@ func RemoveRepoEntry(sessionPath, repoName string) error {
 		return os.RemoveAll(entryPath)
 	}
 
-	if _, err := gitExec(mainRepoPath, "worktree", "remove", entryPath, "--force"); err != nil {
+	if err := removeWorktree(mainRepoPath, entryPath, force); err != nil {
 		return fmt.Errorf("failed to remove worktree: %w", err)
 	}
 

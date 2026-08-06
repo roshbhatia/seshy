@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/roshbhatia/seshy/internal/session"
+	"github.com/spf13/cobra"
 )
 
 var (
-	errCancelled      = errors.New("selection cancelled")
+	errCancelled       = errors.New("selection cancelled")
 	errNothingSelected = errors.New("nothing selected")
 )
 
@@ -84,6 +87,45 @@ func prependDefaults(defaults, candidates []string) []string {
 		}
 	}
 	return result
+}
+
+// sessionNames extracts the names from a session list.
+func sessionNames(sessions []session.Session) []string {
+	names := make([]string, len(sessions))
+	for i, s := range sessions {
+		names[i] = s.Name
+	}
+	return names
+}
+
+// selectSessionName resolves the session a command should act on: args[0] when
+// given, otherwise a pick from names via the configured session picker.
+// An empty name with a nil error means there was nothing to pick or the user
+// backed out, and the caller should exit quietly.
+func selectSessionName(args []string, picker string, names []string) (string, error) {
+	if len(args) > 0 {
+		return args[0], nil
+	}
+	if len(names) == 0 {
+		return "", nil
+	}
+	selected, err := runPicker(picker, names)
+	if err != nil {
+		if errors.Is(err, errCancelled) || errors.Is(err, errNothingSelected) {
+			return "", nil
+		}
+		return "", err
+	}
+	return selected[0], nil
+}
+
+// completeSessionNames completes the first argument with live session names.
+func completeSessionNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	sessions, _ := session.List()
+	return sessionNames(sessions), cobra.ShellCompDirectiveNoFileComp
 }
 
 func expandTilde(path string) string {

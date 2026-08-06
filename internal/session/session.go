@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -135,7 +136,7 @@ func Create(name string, repoPaths []string, opts CreateOpts) ([]RepoInfo, error
 		for i := len(createdList) - 1; i >= 0; i-- {
 			c := createdList[i]
 			if IsGitRepo(c.repoPath) && c.branchName != "" {
-				gitExec(c.repoPath, "worktree", "remove", c.worktreePath, "--force")
+				removeWorktree(c.repoPath, c.worktreePath, true)
 				gitExec(c.repoPath, "branch", "-D", c.branchName)
 			}
 		}
@@ -418,20 +419,36 @@ func RenameSession(oldName, newName string) error {
 	return nil
 }
 
+// ErrCleanupIncomplete reports that a session directory was removed but some
+// worktree registrations or branches were left behind.
+var ErrCleanupIncomplete = errors.New("worktree cleanup incomplete")
+
 // Delete removes a session and cleans up worktrees + branches.
-func Delete(name string) error {
+//
+// When force is set, a worktree cleanup failure no longer stops the session
+// directory from being removed. The cleanup failure is still reported, wrapped
+// in ErrCleanupIncomplete, so the caller can tell a partial success from a
+// refusal to act.
+func Delete(name string, force bool) error {
 	sessionPath, err := GetPath(name)
 	if err != nil {
 		return err
 	}
+	return deleteAt(sessionPath, force)
+}
 
-	if err := CleanupWorktrees(sessionPath); err != nil {
-		return fmt.Errorf("failed to cleanup worktrees: %w", err)
+func deleteAt(sessionPath string, force bool) error {
+	cleanupErr := CleanupWorktrees(sessionPath, force)
+	if cleanupErr != nil && !force {
+		return fmt.Errorf("failed to cleanup worktrees: %w", cleanupErr)
 	}
 
 	if err := os.RemoveAll(sessionPath); err != nil {
 		return fmt.Errorf("failed to remove session directory: %w", err)
 	}
 
+	if cleanupErr != nil {
+		return fmt.Errorf("%w: %v", ErrCleanupIncomplete, cleanupErr)
+	}
 	return nil
 }

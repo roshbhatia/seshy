@@ -68,7 +68,7 @@ var removeCmd = &cobra.Command{
 			}
 		}
 
-		if err := session.RemoveRepoEntry(sessionPath, repoName); err != nil {
+		if err := session.RemoveRepoEntry(sessionPath, repoName, forceRemove); err != nil {
 			return fmt.Errorf("failed to remove repo: %w", err)
 		}
 

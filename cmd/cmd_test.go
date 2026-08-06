@@ -326,6 +326,73 @@ func TestDeleteRmAliasDuplicate(t *testing.T) {
 	}
 }
 
+// TestDeleteForceRemovesLockedWorktree covers the force path end to end. git
+// refuses to remove a locked worktree unless --force is given twice, so before
+// the fix "sy delete --force" left both the registration and the branch behind
+// in the main repo.
+func TestDeleteForceRemovesLockedWorktree(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("stuck", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	sessionPath, _ := session.GetPath("stuck")
+	worktree := filepath.Join(sessionPath, "r")
+	if out, err := exec.Command("git", "-C", repo, "worktree", "lock", worktree).CombinedOutput(); err != nil {
+		t.Fatalf("worktree lock: %v\n%s", err, out)
+	}
+
+	if _, _, err := runCmd("delete", "--force", "stuck"); err != nil {
+		t.Fatalf("delete --force: %v", err)
+	}
+	if session.Exists("stuck") {
+		t.Error("--force left the session directory in place")
+	}
+
+	out, err := exec.Command("git", "-C", repo, "worktree", "list", "--porcelain").CombinedOutput()
+	if err != nil {
+		t.Fatalf("worktree list: %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), worktree) {
+		t.Errorf("locked worktree still registered after --force:\n%s", out)
+	}
+
+	branches, err := exec.Command("git", "-C", repo, "branch", "--list", "sy/stuck/r").Output()
+	if err != nil {
+		t.Fatalf("branch list: %v", err)
+	}
+	if strings.TrimSpace(string(branches)) != "" {
+		t.Errorf("branch not deleted after --force: %q", branches)
+	}
+}
+
+// TestDeleteWithoutForceRefusesLockedWorktree is the other half: without
+// --force a lock must stop the delete, leaving the session intact.
+func TestDeleteWithoutForceRefusesLockedWorktree(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("held", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	sessionPath, _ := session.GetPath("held")
+	if out, err := exec.Command("git", "-C", repo, "worktree", "lock", filepath.Join(sessionPath, "r")).CombinedOutput(); err != nil {
+		t.Fatalf("worktree lock: %v\n%s", err, out)
+	}
+
+	if err := session.Delete("held", false); err == nil {
+		t.Error("expected delete without force to refuse a locked worktree")
+	}
+	if !session.Exists("held") {
+		t.Error("a refused delete must leave the session in place")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // new command (argument validation only — picker is interactive)
 // ---------------------------------------------------------------------------
