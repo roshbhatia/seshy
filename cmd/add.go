@@ -158,7 +158,6 @@ var addCmd = &cobra.Command{
 	},
 }
 
-
 func init() {
 	addCmd.Flags().StringVarP(&addBranch, "branch", "b", "", "Override branch name for all worktrees")
 	addCmd.Flags().BoolVar(&addStdin, "stdin", false, "Read repo paths from stdin")
