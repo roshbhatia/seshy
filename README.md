@@ -17,7 +17,11 @@ task install
 | `sy new <name>` | Create a new session, selecting repos from zoxide history |
 | `sy add <name>` | Add repositories to an existing session |
 | `sy list` / `sy ls` | List all sessions |
+| `sy list --archived` | List archived sessions |
+| `sy archive <name>` | Move a session into the archive |
+| `sy unarchive <name>` / `sy restore <name>` | Restore an archived session |
 | `sy delete <name>` / `sy rm <name>` | Delete a session and clean up worktrees + branches |
+| `sy delete --archived <name>` | Delete an archived session |
 | `sy path <name>` | Print session path |
 | `sy config` | Show effective configuration |
 | `sy config edit` | Open config file in editor |
@@ -33,9 +37,29 @@ branchFormat: "sy/{{.Session}}/{{.Repo}}"
 
 # Sessions storage directory
 sessionsDir: "~/.local/state/seshy/sessions"
+
+# Archive storage directory. Defaults to a sibling of sessionsDir, so archiving
+# stays a same-filesystem move.
+archiveDir: "~/.local/state/seshy/archive"
 ```
 
 Run `sy config` to see effective settings, `sy config edit` to modify.
+
+## Archiving
+
+Archiving moves a session out of the way without tearing it down. Worktrees,
+branches, and uncommitted work all survive the move, and the main repos are
+repaired so they track the new location.
+
+```bash
+sy archive my-feature      # move it to ~/.local/state/seshy/archive
+sy list --archived         # see what is archived
+sy unarchive my-feature    # move it back
+```
+
+Neither command prompts for confirmation, because neither destroys anything.
+Archived sessions do not appear in `sy list`. To throw one away for good, run
+`sy delete --archived <name>`.
 
 ## Branch Naming
 

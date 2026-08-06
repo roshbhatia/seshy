@@ -128,6 +128,15 @@ func completeSessionNames(cmd *cobra.Command, args []string, toComplete string) 
 	return sessionNames(sessions), cobra.ShellCompDirectiveNoFileComp
 }
 
+// completeArchivedNames completes the first argument with archived session names.
+func completeArchivedNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	sessions, _ := session.ListArchived()
+	return sessionNames(sessions), cobra.ShellCompDirectiveNoFileComp
+}
+
 func expandTilde(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		home, _ := os.UserHomeDir()

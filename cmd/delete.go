@@ -14,21 +14,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var forceDelete bool
+var (
+	forceDelete    bool
+	deleteArchived bool
+)
 
 var deleteCmd = &cobra.Command{
-	Use:               "delete [name]",
-	Short:             "Delete a session",
-	Aliases:           []string{"rm"},
-	Args:              cobra.MaximumNArgs(1),
-	ValidArgsFunction: completeSessionNames,
+	Use:     "delete [name]",
+	Short:   "Delete a session",
+	Aliases: []string{"rm"},
+	Args:    cobra.MaximumNArgs(1),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if deleteArchived {
+			return completeArchivedNames(cmd, args, toComplete)
+		}
+		return completeSessionNames(cmd, args, toComplete)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
 		}
 
-		sessions, err := session.List()
+		list, exists := session.List, session.Exists
+		if deleteArchived {
+			list, exists = session.ListArchived, session.ArchivedExists
+		}
+
+		sessions, err := list()
 		if err != nil {
 			return fmt.Errorf("listing sessions: %w", err)
 		}
@@ -45,7 +58,7 @@ var deleteCmd = &cobra.Command{
 			return nil
 		}
 
-		if !session.Exists(name) {
+		if !exists(name) {
 			return fmt.Errorf("session %s not found", ui.AccentBold(name))
 		}
 
@@ -60,14 +73,20 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		// Run pre-delete hooks with full repo info
-		sessionPath, _ := session.GetPath(name)
-		repoInfos := session.GetSessionRepoInfos(sessionPath)
-		data := session.BuildTemplateData(name, sessionPath, repoInfos)
-		hook.Run("pre-delete", cfg.Hooks.PreDelete, data, sessionPath)
+		if deleteArchived {
+			if err := session.DeleteArchived(name, forceDelete); err != nil {
+				return reportDeleteResult(name, err)
+			}
+		} else {
+			// Run pre-delete hooks with full repo info
+			sessionPath, _ := session.GetPath(name)
+			repoInfos := session.GetSessionRepoInfos(sessionPath)
+			data := session.BuildTemplateData(name, sessionPath, repoInfos)
+			hook.Run("pre-delete", cfg.Hooks.PreDelete, data, sessionPath)
 
-		if err := session.Delete(name, forceDelete); err != nil {
-			return reportDeleteResult(name, err)
+			if err := session.Delete(name, forceDelete); err != nil {
+				return reportDeleteResult(name, err)
+			}
 		}
 
 		fmt.Fprintln(os.Stderr, ui.Successf("Deleted session %s", ui.AccentBold(name)))
@@ -88,5 +107,6 @@ func reportDeleteResult(name string, err error) error {
 
 func init() {
 	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, "Skip confirmation and delete even if worktree cleanup fails")
+	deleteCmd.Flags().BoolVar(&deleteArchived, "archived", false, "Delete an archived session instead of an active one")
 	rootCmd.AddCommand(deleteCmd)
 }

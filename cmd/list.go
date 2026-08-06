@@ -7,13 +7,15 @@ import (
 	"time"
 
 	"github.com/roshbhatia/seshy/internal/session"
+	"github.com/roshbhatia/seshy/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var (
-	listJSON  bool
-	listNames bool
-	listPaths bool
+	listJSON     bool
+	listNames    bool
+	listPaths    bool
+	listArchived bool
 )
 
 var listCmd = &cobra.Command{
@@ -35,7 +37,12 @@ var listCmd = &cobra.Command{
 			return fmt.Errorf("--json, --names, and --paths are mutually exclusive")
 		}
 
-		sessions, err := session.List()
+		list, empty := session.List, noSessionsMessage()
+		if listArchived {
+			list, empty = session.ListArchived, "No archived sessions. Archive one with "+ui.AccentBold("sy archive <name>")
+		}
+
+		sessions, err := list()
 		if err != nil {
 			return fmt.Errorf("failed to list sessions: %w", err)
 		}
@@ -48,7 +55,7 @@ var listCmd = &cobra.Command{
 		} else if listPaths {
 			format = "paths"
 		}
-		return printSessionList(sessions, format, noSessionsMessage())
+		return printSessionList(sessions, format, empty)
 	},
 }
 
@@ -106,5 +113,6 @@ func init() {
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output JSON")
 	listCmd.Flags().BoolVar(&listNames, "names", false, "Output session names only")
 	listCmd.Flags().BoolVar(&listPaths, "paths", false, "Output session paths only")
+	listCmd.Flags().BoolVar(&listArchived, "archived", false, "List archived sessions instead of active ones")
 	rootCmd.AddCommand(listCmd)
 }

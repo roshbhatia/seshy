@@ -194,8 +194,11 @@ func Create(name string, repoPaths []string, opts CreateOpts) ([]RepoInfo, error
 
 // List returns all sessions.
 func List() ([]Session, error) {
-	root := config.GetSessionsRoot()
+	return listIn(config.GetSessionsRoot())
+}
 
+// listIn returns every session directory under root.
+func listIn(root string) ([]Session, error) {
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return []Session{}, nil
 	}
@@ -396,15 +399,22 @@ func RenameSession(oldName, newName string) error {
 		return fmt.Errorf("failed to rename session: %w", err)
 	}
 
-	// After the move, repair each main repo's record of where its worktrees live.
-	// Group moved worktrees by main repo so we can issue one repair call per repo.
+	repairWorktreeRegistrations(newPath)
+
+	return nil
+}
+
+// repairWorktreeRegistrations updates each main repo's record of where its
+// worktrees live after a session directory has moved. Worktrees are grouped by
+// main repo so we issue one repair call per repo.
+func repairWorktreeRegistrations(sessionPath string) {
 	mainToWorktrees := make(map[string][]string)
-	entries, _ := os.ReadDir(newPath)
+	entries, _ := os.ReadDir(sessionPath)
 	for _, e := range entries {
 		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
-		entryPath := filepath.Join(newPath, e.Name())
+		entryPath := filepath.Join(sessionPath, e.Name())
 		mainRepo, err := GetWorktreeMainRepo(entryPath)
 		if err != nil {
 			continue
@@ -415,8 +425,6 @@ func RenameSession(oldName, newName string) error {
 		args := append([]string{"worktree", "repair"}, worktrees...)
 		gitExec(mainRepo, args...)
 	}
-
-	return nil
 }
 
 // ErrCleanupIncomplete reports that a session directory was removed but some

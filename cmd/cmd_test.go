@@ -65,6 +65,8 @@ func runCmd(args ...string) (stdout, stderr string, err error) {
 	// Reset persistent flags before each run
 	greedyQuery = ""
 	forceDelete = false
+	deleteArchived = false
+	listArchived = false
 
 	rootCmd.SetArgs(args)
 	err = rootCmd.Execute()
@@ -390,6 +392,135 @@ func TestDeleteWithoutForceRefusesLockedWorktree(t *testing.T) {
 	}
 	if !session.Exists("held") {
 		t.Error("a refused delete must leave the session in place")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// archive / unarchive commands
+// ---------------------------------------------------------------------------
+
+func TestArchiveCommand(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("shelve", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if _, _, err := runCmd("archive", "shelve"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if session.Exists("shelve") {
+		t.Error("session still active after archive")
+	}
+	if !session.ArchivedExists("shelve") {
+		t.Error("session missing from archive")
+	}
+}
+
+func TestArchiveCommandNotFound(t *testing.T) {
+	isolatedRoot(t)
+	if _, _, err := runCmd("archive", "no-such"); err == nil {
+		t.Error("expected error archiving a nonexistent session")
+	}
+}
+
+func TestUnarchiveCommand(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("shelve2", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, _, err := runCmd("archive", "shelve2"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	if _, _, err := runCmd("unarchive", "shelve2"); err != nil {
+		t.Fatalf("unarchive: %v", err)
+	}
+	if !session.Exists("shelve2") {
+		t.Error("session not restored")
+	}
+	if session.ArchivedExists("shelve2") {
+		t.Error("session still in archive after unarchive")
+	}
+}
+
+func TestUnarchiveAliasRestore(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("shelve3", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, _, err := runCmd("archive", "shelve3"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if _, _, err := runCmd("restore", "shelve3"); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if !session.Exists("shelve3") {
+		t.Error("session not restored via alias")
+	}
+}
+
+func TestUnarchiveCommandNotFound(t *testing.T) {
+	isolatedRoot(t)
+	if _, _, err := runCmd("unarchive", "no-such"); err == nil {
+		t.Error("expected error unarchiving a nonexistent archive entry")
+	}
+}
+
+func TestListArchivedFlag(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("hidden", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, _, err := runCmd("archive", "hidden"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	stdout, _, err := runCmd("list", "--names")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if strings.Contains(stdout, "hidden") {
+		t.Errorf("archived session leaked into active list: %q", stdout)
+	}
+
+	stdout, _, err = runCmd("list", "--archived", "--names")
+	if err != nil {
+		t.Fatalf("list --archived: %v", err)
+	}
+	if strings.TrimSpace(stdout) != "hidden" {
+		t.Errorf("list --archived = %q, want \"hidden\"", stdout)
+	}
+}
+
+func TestDeleteArchivedFlag(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, err := session.Create("gone", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, _, err := runCmd("archive", "gone"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	if _, _, err := runCmd("delete", "--archived", "--force", "gone"); err != nil {
+		t.Fatalf("delete --archived: %v", err)
+	}
+	if session.ArchivedExists("gone") {
+		t.Error("archived session still exists after delete --archived")
 	}
 }
 

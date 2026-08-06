@@ -21,6 +21,7 @@ type HooksConfig struct {
 type Config struct {
 	BranchFormat  string      `yaml:"branchFormat"`
 	SessionsDir   string      `yaml:"sessionsDir"`
+	ArchiveDir    string      `yaml:"archiveDir"`
 	RepoSource    string      `yaml:"repoSource"`
 	Picker        string      `yaml:"picker"`
 	SessionPicker string      `yaml:"sessionPicker"`
@@ -32,6 +33,7 @@ func defaults() Config {
 	return Config{
 		BranchFormat:  "sy/{{.Session}}/{{.Repo}}",
 		SessionsDir:   "",
+		ArchiveDir:    "",
 		RepoSource:    "zoxide query --list",
 		Picker:        "fzf --multi --height=40% --reverse --prompt='repo > '",
 		SessionPicker: "fzf --height=40% --reverse --prompt='session > '",
@@ -133,4 +135,22 @@ func GetSessionsRoot() string {
 // EnsureSessionsRoot creates the sessions directory if it doesn't exist.
 func EnsureSessionsRoot() error {
 	return os.MkdirAll(GetSessionsRoot(), 0755)
+}
+
+// GetArchiveRoot returns the directory that holds archived sessions.
+// Respects archiveDir in config if set. Otherwise it sits beside the sessions
+// directory, which keeps archiving a same-filesystem rename.
+func GetArchiveRoot() string {
+	if data, err := os.ReadFile(ConfigPath()); err == nil {
+		var cfg Config
+		if yaml.Unmarshal(data, &cfg) == nil && cfg.ArchiveDir != "" {
+			return expandTilde(cfg.ArchiveDir)
+		}
+	}
+	return filepath.Join(filepath.Dir(GetSessionsRoot()), "archive")
+}
+
+// EnsureArchiveRoot creates the archive directory if it doesn't exist.
+func EnsureArchiveRoot() error {
+	return os.MkdirAll(GetArchiveRoot(), 0755)
 }
