@@ -33,11 +33,18 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Default: show list (same as `sy list`)
-		return printSessionList(sessions, "")
+		return printSessionList(sessions, "", noSessionsMessage())
 	},
 }
 
-func printSessionList(sessions []session.Session, format string) error {
+// noSessionsMessage is shown when the sessions table is empty.
+func noSessionsMessage() string {
+	return "No sessions yet. Create one with " + ui.AccentBold("sy new <name>")
+}
+
+// printSessionList renders sessions in the requested format. empty is the
+// message shown when the list has no entries and the format is the human table.
+func printSessionList(sessions []session.Session, format, empty string) error {
 	switch format {
 	case "json":
 		return printSessionsJSON(sessions)
@@ -55,7 +62,7 @@ func printSessionList(sessions []session.Session, format string) error {
 
 	// Default: human-readable table
 	if len(sessions) == 0 {
-		fmt.Println(ui.Info("No sessions yet. Create one with " + ui.AccentBold("sy new <name>")))
+		fmt.Println(ui.Info(empty))
 		return nil
 	}
 
@@ -74,12 +81,25 @@ func printSessionList(sessions []session.Session, format string) error {
 		}
 	}
 
-	fmtStr := fmt.Sprintf("%%-%ds  %%-%ds  %%s\n", nameW, reposW)
-	fmt.Printf(fmtStr, ui.Color(ui.ColorPurple, "SESSION"), ui.Color(ui.ColorPurple, "REPOS"), ui.Color(ui.ColorPurple, "MODIFIED"))
+	// Pad before coloring. ANSI escapes have no display width, so a %-Ns verb
+	// applied to an already-colored string counts the escape bytes and drops
+	// the padding, which is what threw the header out of line with the rows.
+	fmt.Printf("%s  %s  %s\n",
+		ui.StdoutColor(ui.ColorPurple, pad("SESSION", nameW)),
+		ui.StdoutColor(ui.ColorPurple, pad("REPOS", reposW)),
+		ui.StdoutColor(ui.ColorPurple, "MODIFIED"))
 	for _, r := range rows {
-		fmt.Printf(fmtStr, r.name, r.repos, ui.Faint(r.modified))
+		fmt.Printf("%s  %s  %s\n", pad(r.name, nameW), pad(r.repos, reposW), ui.StdoutFaint(r.modified))
 	}
 	return nil
+}
+
+// pad right-pads s with spaces to width w.
+func pad(s string, w int) string {
+	if n := w - len(s); n > 0 {
+		return s + strings.Repeat(" ", n)
+	}
+	return s
 }
 
 // greedyMatch returns the best session matching query: exact > prefix > substring (case-insensitive).

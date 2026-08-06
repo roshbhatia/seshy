@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/roshbhatia/seshy/internal/session"
+	"github.com/roshbhatia/seshy/internal/ui"
 )
 
 // ---------------------------------------------------------------------------
@@ -519,4 +520,89 @@ func TestListEmpty(t *testing.T) {
 	if !strings.Contains(stdout, "[]") {
 		t.Errorf("expected empty JSON array, got %q", stdout)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// table rendering
+// ---------------------------------------------------------------------------
+
+// TestPrintSessionListAlignsColoredHeader guards the padding bug: ANSI escapes
+// carry no display width, so padding must be applied before coloring or the
+// header drifts out of line with the rows below it.
+func TestPrintSessionListAlignsColoredHeader(t *testing.T) {
+	ui.SetStdoutColorsEnabled(true)
+	defer ui.SetStdoutColorsEnabled(false)
+
+	sessions := []session.Session{
+		{Name: "a-very-long-session-name", RepoCount: 3, LastModified: time.Now()},
+		{Name: "sh", RepoCount: 12, LastModified: time.Now()},
+	}
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	err := printSessionList(sessions, "", "none")
+	w.Close()
+	os.Stdout = origStdout
+	if err != nil {
+		t.Fatalf("printSessionList: %v", err)
+	}
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+
+	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected header plus 2 rows, got %d lines", len(lines))
+	}
+
+	// The name column is as wide as the longest name, plus a two-space gutter,
+	// so the second column starts at the same offset on every line.
+	offset := len("a-very-long-session-name") + 2
+	for i, want := range []string{"REPOS", "3", "12"} {
+		plain := stripANSI(lines[i])
+		if len(plain) < offset || !strings.HasPrefix(plain[offset:], want) {
+			t.Errorf("line %d: second column does not start at %d with %q\n%q", i, offset, want, plain)
+		}
+	}
+}
+
+// TestPrintSessionListNoColorWhenStdoutRedirected keeps escape codes out of a
+// piped or redirected listing.
+func TestPrintSessionListNoColorWhenStdoutRedirected(t *testing.T) {
+	ui.SetStdoutColorsEnabled(false)
+
+	sessions := []session.Session{{Name: "plain", RepoCount: 1, LastModified: time.Now()}}
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	err := printSessionList(sessions, "", "none")
+	w.Close()
+	os.Stdout = origStdout
+	if err != nil {
+		t.Fatalf("printSessionList: %v", err)
+	}
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+
+	if strings.Contains(buf.String(), "\033[") {
+		t.Errorf("expected no ANSI escapes in redirected output, got %q", buf.String())
+	}
+}
+
+// stripANSI removes SGR escape sequences so tests can measure display width.
+func stripANSI(s string) string {
+	var out strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\033' {
+			for i < len(s) && s[i] != 'm' {
+				i++
+			}
+			continue
+		}
+		out.WriteByte(s[i])
+	}
+	return out.String()
 }

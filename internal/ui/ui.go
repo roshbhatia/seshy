@@ -19,11 +19,18 @@ const (
 	ColorWhite  = 255
 )
 
-// colorsEnabled is resolved once at init time.
-var colorsEnabled bool
+// Color support is resolved once at init time, per stream: messages go to
+// stderr but list output goes to stdout, and either one may be redirected
+// on its own.
+var (
+	colorsEnabled       bool
+	stdoutColorsEnabled bool
+)
 
 func init() {
-	colorsEnabled = isTTY(os.Stderr) && os.Getenv("NO_COLOR") == ""
+	noColor := os.Getenv("NO_COLOR") != ""
+	colorsEnabled = isTTY(os.Stderr) && !noColor
+	stdoutColorsEnabled = isTTY(os.Stdout) && !noColor
 }
 
 // isTTY reports whether f is a terminal.
@@ -44,6 +51,19 @@ func Color(code int, text string) string {
 		return text
 	}
 	return fmt.Sprintf("\033[38;5;%dm%s\033[0m", code, text)
+}
+
+// StdoutColor wraps text in ANSI 256-color escapes if stdout carries colors.
+func StdoutColor(code int, text string) string {
+	if !stdoutColorsEnabled {
+		return text
+	}
+	return fmt.Sprintf("\033[38;5;%dm%s\033[0m", code, text)
+}
+
+// StdoutFaint dims stdout text using the gray color.
+func StdoutFaint(text string) string {
+	return StdoutColor(ColorGray, text)
 }
 
 // Bold wraps text in ANSI bold if colors are enabled.
@@ -111,7 +131,12 @@ func Infof(format string, a ...any) string {
 
 // ── Testing helpers ─────────────────────────────────────────────────────
 
-// SetColorsEnabled overrides the color detection for testing.
+// SetColorsEnabled overrides the stderr color detection for testing.
 func SetColorsEnabled(enabled bool) {
 	colorsEnabled = enabled
+}
+
+// SetStdoutColorsEnabled overrides the stdout color detection for testing.
+func SetStdoutColorsEnabled(enabled bool) {
+	stdoutColorsEnabled = enabled
 }

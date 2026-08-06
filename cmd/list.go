@@ -22,9 +22,15 @@ var listCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flagCount := 0
-		if listJSON { flagCount++ }
-		if listNames { flagCount++ }
-		if listPaths { flagCount++ }
+		if listJSON {
+			flagCount++
+		}
+		if listNames {
+			flagCount++
+		}
+		if listPaths {
+			flagCount++
+		}
 		if flagCount > 1 {
 			return fmt.Errorf("--json, --names, and --paths are mutually exclusive")
 		}
@@ -42,7 +48,7 @@ var listCmd = &cobra.Command{
 		} else if listPaths {
 			format = "paths"
 		}
-		return printSessionList(sessions, format)
+		return printSessionList(sessions, format, noSessionsMessage())
 	},
 }
 
