@@ -1,14 +1,16 @@
 # seshy
 
+> Archived on 2026-08-18. The source moved into
+> [roshbhatia/sysinit](https://github.com/roshbhatia/sysinit) under `pkgs/seshy`,
+> built by `overlays/seshy.nix`. sysinit is the only consumer, it already
+> generates `~/.config/seshy/config.yaml`, and a separate repository meant a
+> flake input, a second CI pipeline, and a release step for a tool that ships to
+> one machine. Read and change it there; this tree is frozen at the state sysinit
+> vendored.
+>
+> Install it from sysinit: `nix run github:roshbhatia/sysinit#seshy`.
+
 Minimalist session manager for multi-repo development, with git worktree integration.
-
-## Installation
-
-```bash
-git clone https://github.com/roshbhatia/seshy
-cd seshy
-task install
-```
 
 ## Commands
 
