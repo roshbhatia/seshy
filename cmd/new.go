@@ -18,6 +18,7 @@ import (
 var (
 	newBranch string
 	newStdin  bool
+	newEmpty  bool
 )
 
 var newCmd = &cobra.Command{
@@ -41,6 +42,10 @@ var newCmd = &cobra.Command{
 
 		repos := args[1:]
 
+		if newEmpty && len(repos) > 0 {
+			return fmt.Errorf("--empty takes no repositories")
+		}
+
 		if newStdin {
 			scanner := bufio.NewScanner(os.Stdin)
 			for scanner.Scan() {
@@ -51,24 +56,25 @@ var newCmd = &cobra.Command{
 			}
 		}
 
-		if len(repos) == 0 {
+		// The picker is the only interactive path here. --empty and --stdin both
+		// say the caller already supplied the repo list, so an empty list means an
+		// empty session instead of a prompt no one is there to answer.
+		if len(repos) == 0 && !newEmpty && !newStdin {
 			candidates, err := runSource(cfg.RepoSource)
 			if err != nil {
 				return fmt.Errorf("repo source: %w", err)
 			}
 			candidates = prependDefaults(cfg.DefaultRepos, candidates)
-			selected, err := runPicker(cfg.Picker, candidates)
-			if err != nil {
-				if errors.Is(err, errCancelled) {
-					return nil
+			if len(candidates) > 0 {
+				selected, err := runPicker(cfg.Picker, candidates)
+				if err != nil {
+					if errors.Is(err, errCancelled) {
+						return nil
+					}
+					return err
 				}
-				return err
+				repos = selected
 			}
-			repos = selected
-		}
-
-		if len(repos) == 0 {
-			return fmt.Errorf("no repositories selected")
 		}
 
 		opts := session.CreateOpts{
@@ -104,7 +110,10 @@ var newCmd = &cobra.Command{
 
 		fmt.Fprintln(os.Stderr, ui.Successf("Created session %s", ui.AccentBold(name)))
 		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Faint("path:"), sessionPath)
-		fmt.Fprintf(os.Stderr, "  %s %d\n", ui.Faint("repos:"), len(repos))
+		fmt.Fprintf(os.Stderr, "  %s %d\n", ui.Faint("repos:"), len(repoInfos))
+		if len(repoInfos) == 0 {
+			fmt.Fprintln(os.Stderr, ui.Info("Empty session. Add repos with "+ui.AccentBold("sy add "+name)))
+		}
 		return nil
 	},
 }
@@ -112,5 +121,6 @@ var newCmd = &cobra.Command{
 func init() {
 	newCmd.Flags().StringVarP(&newBranch, "branch", "b", "", "Override branch name for all worktrees")
 	newCmd.Flags().BoolVar(&newStdin, "stdin", false, "Read repo paths from stdin")
+	newCmd.Flags().BoolVar(&newEmpty, "empty", false, "Create the session with no repositories")
 	rootCmd.AddCommand(newCmd)
 }

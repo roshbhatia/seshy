@@ -15,6 +15,7 @@ task install
 | Command | Description |
 |---------|-------------|
 | `sy new <name>` | Create a new session, selecting repos from zoxide history |
+| `sy new <name> --empty` | Create an empty session with no repositories |
 | `sy add <name>` | Add repositories to an existing session |
 | `sy list` / `sy ls` | List all sessions |
 | `sy list --archived` | List archived sessions |
@@ -60,6 +61,23 @@ sy unarchive my-feature    # move it back
 Neither command prompts for confirmation, because neither destroys anything.
 Archived sessions do not appear in `sy list`. To throw one away for good, run
 `sy delete --archived <name>`.
+
+## Empty Sessions
+
+A session does not need any repositories. Use `--empty` to create one with none:
+
+```bash
+sy new scratch --empty
+sy add scratch          # attach repos later
+```
+
+Two other paths create an empty session instead of prompting:
+
+- `sy new <name> --stdin` when stdin holds no paths.
+- `sy new <name>` when the repo source returns no candidates.
+
+Non-git directories are always supported. Seshy symlinks them into the session
+instead of creating a worktree, and `sy status` marks them `(symlink)`.
 
 ## Branch Naming
 

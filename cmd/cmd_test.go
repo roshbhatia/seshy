@@ -67,6 +67,9 @@ func runCmd(args ...string) (stdout, stderr string, err error) {
 	forceDelete = false
 	deleteArchived = false
 	listArchived = false
+	newBranch = ""
+	newStdin = false
+	newEmpty = false
 
 	rootCmd.SetArgs(args)
 	err = rootCmd.Execute()
@@ -547,6 +550,89 @@ func TestNewCommandDuplicate(t *testing.T) {
 	// duplicate guard through session.Create directly to avoid TTY requirement
 	if _, err := session.Create("dup", []string{repo}, session.CreateOpts{BranchFormat: "sy/{{.Session}}/{{.Repo}}"}); err == nil {
 		t.Error("expected error for duplicate session name")
+	}
+}
+
+func TestNewCommandEmptyFlag(t *testing.T) {
+	isolatedRoot(t)
+	if _, _, err := runCmd("new", "solo", "--empty"); err != nil {
+		t.Fatalf("new --empty: %v", err)
+	}
+	path, err := session.GetPath("solo")
+	if err != nil {
+		t.Fatalf("session not created: %v", err)
+	}
+	if repos := session.GetSessionRepoInfos(path); len(repos) != 0 {
+		t.Errorf("expected 0 repos, got %d", len(repos))
+	}
+}
+
+func TestNewCommandEmptyFlagRejectsRepos(t *testing.T) {
+	isolatedRoot(t)
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "r")
+	setupGitRepo(t, repo)
+	if _, _, err := runCmd("new", "solo", repo, "--empty"); err == nil {
+		t.Error("expected error when --empty is combined with repo arguments")
+	}
+	if session.Exists("solo") {
+		t.Error("session should not be created when the flags conflict")
+	}
+}
+
+// --stdin with no lines must not fall back to the interactive picker: the
+// caller already declared where the repo list comes from.
+func TestNewCommandStdinNoLinesCreatesEmptySession(t *testing.T) {
+	isolatedRoot(t)
+	empty, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatalf("open devnull: %v", err)
+	}
+	defer empty.Close()
+	orig := os.Stdin
+	os.Stdin = empty
+	defer func() { os.Stdin = orig }()
+
+	if _, _, err := runCmd("new", "piped", "--stdin"); err != nil {
+		t.Fatalf("new --stdin: %v", err)
+	}
+	path, err := session.GetPath("piped")
+	if err != nil {
+		t.Fatalf("session not created: %v", err)
+	}
+	if repos := session.GetSessionRepoInfos(path); len(repos) != 0 {
+		t.Errorf("expected 0 repos, got %d", len(repos))
+	}
+}
+
+func TestEmptySessionListsArchivesAndDeletes(t *testing.T) {
+	isolatedRoot(t)
+	if _, _, err := runCmd("new", "solo", "--empty"); err != nil {
+		t.Fatalf("new --empty: %v", err)
+	}
+
+	stdout, _, err := runCmd("list")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !strings.Contains(stdout, "solo") {
+		t.Errorf("list did not show the empty session: %q", stdout)
+	}
+
+	if _, _, err := runCmd("status", "solo"); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if _, _, err := runCmd("archive", "solo"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if _, _, err := runCmd("unarchive", "solo"); err != nil {
+		t.Fatalf("unarchive: %v", err)
+	}
+	if _, _, err := runCmd("delete", "solo", "--force"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if session.Exists("solo") {
+		t.Error("session still exists after delete")
 	}
 }
 
