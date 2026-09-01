@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/session"
-	"github.com/roshbhatia/seshy/internal/ui"
 )
 
 // ---------------------------------------------------------------------------

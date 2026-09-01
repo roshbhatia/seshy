@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/config"
-	"github.com/roshbhatia/seshy/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +33,7 @@ var configInitCmd = &cobra.Command{
 		cfgPath := config.ConfigPath()
 		if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 			content := `# seshy configuration
-# See: https://github.com/roshbhatia/seshy
+# See: https://github.com/roshbhatia/sysinit/pkgs/seshy
 
 # Branch naming template (Go template)
 # Variables: .Session, .Repo, .User

@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/hook"
 	"github.com/roshbhatia/seshy/internal/session"
-	"github.com/roshbhatia/seshy/internal/ui"
 	"github.com/spf13/cobra"
 )
 

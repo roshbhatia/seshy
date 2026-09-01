@@ -41,7 +41,7 @@
 
           # `nix build` reports the correct value when this is wrong. Bump it
           # whenever go.mod or go.sum changes.
-          vendorHash = "sha256-6B9O6ho4COpJy4HlkzQ0lk+ieezRO3xg9LyLHzoxYzc=";
+          vendorHash = "sha256-FZVFEBUXL8DdAeUYkctNwmsk+Apu3eOvEldm+UvScb0=";
 
           # No `subPackages`. It scopes the CHECK phase as well as the build, so
           # restricting it to "." made `go test` run against the root package
@@ -93,7 +93,14 @@
             pkgs.go
             pkgs.go-task
             pkgs.gopls
+            pkgs.gotools
+            pkgs.go-tools
+            pkgs.goreleaser
+            pkgs.ripgrep
           ];
+          shellHook = ''
+            export GOTOOLCHAIN=local
+          '';
         };
 
         checks.seshy = seshy;

@@ -1,48 +1,27 @@
 package session
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/roshbhatia/go-utils/git"
 )
 
-// gitExec runs a git command and returns its stdout. If the command fails,
-// the error wraps the subcommand name, repo path, and stderr content.
 func gitExec(repoPath string, args ...string) (string, error) {
-	fullArgs := append([]string{"-C", repoPath}, args...)
-	cmd := exec.Command("git", fullArgs...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		subcmd := ""
-		if len(args) > 0 {
-			subcmd = args[0]
-		}
-		return "", fmt.Errorf("git %s failed for %s: %s: %w", subcmd, repoPath, strings.TrimSpace(stderr.String()), err)
-	}
-	return strings.TrimSpace(stdout.String()), nil
+	return git.Output(repoPath, args...)
 }
 
-// IsGitRepo checks if a path is a git repository.
-func IsGitRepo(path string) bool {
-	_, err := gitExec(path, "rev-parse", "--git-dir")
-	return err == nil
-}
+func IsGitRepo(path string) bool { return git.IsRepo(path) }
 
-// GetRepoBasename returns the basename of a repository path.
 func GetRepoBasename(path string) string {
 	return filepath.Base(path)
 }
 
-// GetCurrentBranch returns the current branch name for a git repo or worktree.
 func GetCurrentBranch(path string) (string, error) {
-	return gitExec(path, "rev-parse", "--abbrev-ref", "HEAD")
+	return git.Branch(path)
 }
 
 // disambiguatedName generates a unique worktree directory name using bare basename.
@@ -82,7 +61,7 @@ func CreateWorktree(repoPath, sessionPath, branchName string) (string, error) {
 		// Fallback: branch already exists, reuse it
 		_, err2 := gitExec(repoPath, "worktree", "add", worktreePath, branchName)
 		if err2 != nil {
-			return "", fmt.Errorf("failed to create worktree (primary: %w) (fallback: %v)", err, err2)
+			return "", fmt.Errorf("failed to create worktree (primary: %w) (fallback: %w)", err, err2)
 		}
 	}
 
@@ -134,7 +113,7 @@ func removeWorktree(mainRepoPath, worktreePath string, force bool) error {
 	// prune clears registrations whose directory is already gone, which is the
 	// common reason remove fails. It exits 0 even when it clears nothing, so
 	// confirm the registration actually went away rather than trusting it.
-	gitExec(mainRepoPath, "worktree", "prune")
+	_, _ = gitExec(mainRepoPath, "worktree", "prune")
 	if worktreeRegistered(mainRepoPath, worktreePath) {
 		return removeErr
 	}
@@ -216,7 +195,9 @@ func CleanupWorktrees(sessionPath string, force bool) error {
 		if branchName != "" && branchName != "HEAD" {
 			mainBranch, _ := gitExec(mainRepoPath, "rev-parse", "--abbrev-ref", "HEAD")
 			if mainBranch != branchName {
-				gitExec(mainRepoPath, "branch", "-D", branchName)
+				if _, err := gitExec(mainRepoPath, "branch", "-D", branchName); err != nil {
+					errs = append(errs, fmt.Errorf("failed to delete branch %s: %w", branchName, err))
+				}
 			}
 		}
 	}
@@ -267,7 +248,9 @@ func RemoveRepoEntry(sessionPath, repoName string, force bool) error {
 	if branchName != "" && branchName != "HEAD" {
 		mainBranch, _ := gitExec(mainRepoPath, "rev-parse", "--abbrev-ref", "HEAD")
 		if mainBranch != branchName {
-			gitExec(mainRepoPath, "branch", "-D", branchName)
+			if _, err := gitExec(mainRepoPath, "branch", "-D", branchName); err != nil {
+				return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
+			}
 		}
 	}
 

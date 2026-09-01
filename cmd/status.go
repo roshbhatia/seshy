@@ -6,28 +6,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/session"
-	"github.com/roshbhatia/seshy/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var statusCmd = &cobra.Command{
-	Use:     "status [name]",
-	Short:   "Show session details",
-	Aliases: []string{"info"},
-	Args:    cobra.MaximumNArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) != 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		sessions, _ := session.List()
-		names := make([]string, len(sessions))
-		for i, s := range sessions {
-			names[i] = s.Name
-		}
-		return names, cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "status [name]",
+	Short:             "Show session details",
+	Aliases:           []string{"info"},
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeSessionNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var name string
 
@@ -101,13 +91,13 @@ var statusCmd = &cobra.Command{
 
 		fmtStr := fmt.Sprintf("  %%-%ds  %%-%ds  %%s\n", nameW, branchW)
 		fmt.Printf(fmtStr,
-			ui.Color(ui.ColorPurple, "NAME"),
-			ui.Color(ui.ColorPurple, "BRANCH"),
-			ui.Color(ui.ColorPurple, "SOURCE"),
+			ui.ANSIColor(ui.ColorPurple, "NAME"),
+			ui.ANSIColor(ui.ColorPurple, "BRANCH"),
+			ui.ANSIColor(ui.ColorPurple, "SOURCE"),
 		)
 		for _, r := range repos {
 			branch := r.Branch
-			branchStr := ui.Color(ui.ColorPurple, branch)
+			branchStr := ui.ANSIColor(ui.ColorPurple, branch)
 			if branch == "" {
 				branchStr = ui.Faint("(symlink)")
 			}

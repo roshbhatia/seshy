@@ -1,16 +1,14 @@
 # seshy
 
-> Archived on 2026-08-18. The source moved into
-> [roshbhatia/sysinit](https://github.com/roshbhatia/sysinit) under `pkgs/seshy`,
-> built by `overlays/seshy.nix`. sysinit is the only consumer, it already
-> generates `~/.config/seshy/config.yaml`, and a separate repository meant a
-> flake input, a second CI pipeline, and a release step for a tool that ships to
-> one machine. Read and change it there; this tree is frozen at the state sysinit
-> vendored.
->
-> Install it from sysinit: `nix run github:roshbhatia/sysinit#seshy`.
-
 Minimalist session manager for multi-repo development, with git worktree integration.
+
+## Install
+
+```bash
+nix run github:roshbhatia/seshy -- --help
+```
+
+Tagged releases also publish `sy` archives for Darwin and Linux.
 
 ## Commands
 
@@ -20,6 +18,9 @@ Minimalist session manager for multi-repo development, with git worktree integra
 | `sy new <name> --empty` | Create an empty session with no repositories |
 | `sy add <name>` | Add repositories to an existing session |
 | `sy list` / `sy ls` | List all sessions |
+| `sy current` | Print the session holding the working directory |
+| `sy switch <name>` | Resolve a session and print its path |
+| `sy attach <name>` | Print session metadata as JSON |
 | `sy list --archived` | List archived sessions |
 | `sy archive <name>` | Move a session into the archive |
 | `sy unarchive <name>` / `sy restore <name>` | Restore an archived session |

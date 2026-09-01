@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/hook"
 	"github.com/roshbhatia/seshy/internal/session"
 	"github.com/roshbhatia/seshy/internal/tmpl"
-	"github.com/roshbhatia/seshy/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -21,20 +21,10 @@ var (
 )
 
 var addCmd = &cobra.Command{
-	Use:   "add <name> [repos...]",
-	Short: "Add repositories to a session",
-	Args:  cobra.MinimumNArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) != 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		sessions, _ := session.List()
-		names := make([]string, len(sessions))
-		for i, s := range sessions {
-			names[i] = s.Name
-		}
-		return names, cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "add <name> [repos...]",
+	Short:             "Add repositories to a session",
+	Args:              cobra.MinimumNArgs(1),
+	ValidArgsFunction: completeSessionNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		if !session.Exists(name) {

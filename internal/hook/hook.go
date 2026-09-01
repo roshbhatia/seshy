@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/roshbhatia/go-utils/ui"
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/tmpl"
-	"github.com/roshbhatia/seshy/internal/ui"
 )
 
 // Run executes hook commands for the given event.
