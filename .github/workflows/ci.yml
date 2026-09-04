@@ -32,12 +32,12 @@ jobs:
           fetch-depth: 0
       - uses: cachix/install-nix-action@v31
       - run: nix develop --command goreleaser release --snapshot --clean --skip publish
-        env:
-          HOMEBREW_TAP_TOKEN: snapshot
       - run: |
           test "$(find dist -name '*.tar.gz' | wc -l)" -eq 4
+          test -s dist/checksums.txt
           for archive in dist/*.tar.gz; do
             tar -tzf "$archive" | grep -F 'completions/sy.nu'
+            tar -tzf "$archive" | grep -F 'schema/config.schema.json'
             tar -tzf "$archive" | grep -F 'README.md'
             tar -tzf "$archive" | grep -F 'LICENSE'
           done
