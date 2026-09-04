@@ -10,6 +10,8 @@ builds:
     binary: sy
     env:
       - CGO_ENABLED=0
+    flags: [-trimpath]
+    mod_timestamp: "{{ .CommitTimestamp }}"
     goos: [darwin, linux]
     goarch: [amd64, arm64]
     ldflags:
@@ -24,6 +26,8 @@ archives:
     files:
       - src: completions/*
         dst: completions
+      - src: schema/*.json
+        dst: schema
       - LICENSE
       - README.md
 
@@ -32,28 +36,3 @@ checksum:
 
 changelog:
   use: github-native
-
-homebrew_casks:
-  - name: seshy
-    ids: [seshy]
-    binaries: [sy]
-    homepage: https://github.com/roshbhatia/seshy
-    description: Multi-repository worktree session manager
-    generate_completions_from_executable:
-      executable: sy
-      args: [completion]
-      base_name: sy
-      shell_parameter_format: cobra
-      shells: [bash, zsh, fish]
-    hooks:
-      post:
-        install: |
-          nushell_completion = "#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/sy.nu"
-          FileUtils.mkdir_p(File.dirname(nushell_completion))
-          File.write(nushell_completion, Utils.safe_popen_read("#{staged_path}/sy", "completion", "nu"))
-        uninstall: |
-          FileUtils.rm_f("#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/sy.nu")
-    repository:
-      owner: roshbhatia
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
