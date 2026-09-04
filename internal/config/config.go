@@ -2,33 +2,32 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
+	sharedconfig "github.com/roshbhatia/go-utils/config"
 	"github.com/roshbhatia/go-utils/paths"
+	"go.yaml.in/yaml/v3"
 )
 
 // HooksConfig holds lifecycle hook commands.
 type HooksConfig struct {
-	PostCreate []string `yaml:"postCreate"`
-	PostAdd    []string `yaml:"postAdd"`
-	PreDelete  []string `yaml:"preDelete"`
+	PostCreate []string `json:"postCreate,omitempty" yaml:"postCreate"`
+	PostAdd    []string `json:"postAdd,omitempty" yaml:"postAdd"`
+	PreDelete  []string `json:"preDelete,omitempty" yaml:"preDelete"`
 }
 
 // Config holds all seshy configuration.
 type Config struct {
-	BranchFormat  string      `yaml:"branchFormat"`
-	SessionsDir   string      `yaml:"sessionsDir"`
-	ArchiveDir    string      `yaml:"archiveDir"`
-	RepoSource    string      `yaml:"repoSource"`
-	Picker        string      `yaml:"picker"`
-	SessionPicker string      `yaml:"sessionPicker"`
-	DefaultRepos  []string    `yaml:"defaultRepos"`
-	Hooks         HooksConfig `yaml:"hooks"`
+	BranchFormat  string      `json:"branchFormat,omitempty" yaml:"branchFormat"`
+	SessionsDir   string      `json:"sessionsDir,omitempty" yaml:"sessionsDir"`
+	ArchiveDir    string      `json:"archiveDir,omitempty" yaml:"archiveDir"`
+	RepoSource    string      `json:"repoSource,omitempty" yaml:"repoSource"`
+	Picker        string      `json:"picker,omitempty" yaml:"picker"`
+	SessionPicker string      `json:"sessionPicker,omitempty" yaml:"sessionPicker"`
+	DefaultRepos  []string    `json:"defaultRepos,omitempty" yaml:"defaultRepos"`
+	Hooks         HooksConfig `json:"hooks,omitempty" yaml:"hooks"`
 }
 
 func defaults() Config {
@@ -49,36 +48,28 @@ func ConfigDir() string {
 
 // ConfigPath returns the path to config.yaml.
 func ConfigPath() string {
-	return filepath.Join(ConfigDir(), "config.yaml")
+	path, err := sharedconfig.Path(configOptions())
+	if err != nil {
+		return filepath.Join(ConfigDir(), "config.yaml")
+	}
+	return path
+}
+
+func configOptions() sharedconfig.Options {
+	return sharedconfig.Options{Name: "seshy", EnvPrefix: "SESHY"}
 }
 
 // Load reads config from disk and merges with defaults.
 func Load() (*Config, error) {
-	cfg := defaults()
-	data, err := os.ReadFile(ConfigPath())
+	options := configOptions()
+	if data, err := os.ReadFile(ConfigPath()); err == nil && len(strings.TrimSpace(string(data))) == 0 {
+		// An empty YAML document has no overrides. Point the shared loader at a
+		// missing sibling so it still applies SESHY_* environment values.
+		options.Path = ConfigPath() + ".empty"
+	}
+	cfg, err := sharedconfig.Load(defaults(), options)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &cfg, nil
-		}
-		return nil, fmt.Errorf("reading config: %w", err)
-	}
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config: %w", err)
-	}
-
-	// Apply defaults for empty string fields
-	d := defaults()
-	if cfg.BranchFormat == "" {
-		cfg.BranchFormat = d.BranchFormat
-	}
-	if cfg.RepoSource == "" {
-		cfg.RepoSource = d.RepoSource
-	}
-	if cfg.Picker == "" {
-		cfg.Picker = d.Picker
-	}
-	if cfg.SessionPicker == "" {
-		cfg.SessionPicker = d.SessionPicker
+		return nil, err
 	}
 
 	// Tilde expansion for default repos
@@ -87,6 +78,11 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// Schema emits the JSON Schema used by YAML language servers.
+func Schema() ([]byte, error) {
+	return sharedconfig.Schema[Config]("Seshy configuration")
 }
 
 func expandTilde(path string) string {
@@ -99,8 +95,8 @@ func expandTilde(path string) string {
 
 // WriteDefault writes a default config file.
 func WriteDefault() error {
-	dir := ConfigDir()
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	path := ConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 	cfg := defaults()
@@ -108,17 +104,14 @@ func WriteDefault() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(ConfigPath(), data, 0644)
+	return os.WriteFile(path, data, 0644)
 }
 
 // GetSessionsRoot returns the sessions directory. config.yaml wins, then the
 // sysinit paths manifest, which is the value nix wrote into config.yaml anyway.
 func GetSessionsRoot() string {
-	if data, err := os.ReadFile(ConfigPath()); err == nil {
-		var cfg Config
-		if yaml.Unmarshal(data, &cfg) == nil && cfg.SessionsDir != "" {
-			return expandTilde(cfg.SessionsDir)
-		}
+	if cfg, err := Load(); err == nil && cfg.SessionsDir != "" {
+		return expandTilde(cfg.SessionsDir)
 	}
 	return paths.SeshySessions()
 }
@@ -132,11 +125,8 @@ func EnsureSessionsRoot() error {
 // Respects archiveDir in config if set. Otherwise it sits beside the sessions
 // directory, which keeps archiving a same-filesystem rename.
 func GetArchiveRoot() string {
-	if data, err := os.ReadFile(ConfigPath()); err == nil {
-		var cfg Config
-		if yaml.Unmarshal(data, &cfg) == nil && cfg.ArchiveDir != "" {
-			return expandTilde(cfg.ArchiveDir)
-		}
+	if cfg, err := Load(); err == nil && cfg.ArchiveDir != "" {
+		return expandTilde(cfg.ArchiveDir)
 	}
 	return filepath.Join(filepath.Dir(GetSessionsRoot()), "archive")
 }

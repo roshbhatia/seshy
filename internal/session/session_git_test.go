@@ -1,10 +1,12 @@
 package session
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"text/template"
 )
 
 // withGlobalIgnore points git's global excludes at a temp file that ignores
@@ -14,11 +16,21 @@ func withGlobalIgnore(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
 	ignore := filepath.Join(dir, "global-ignore")
-	if err := os.WriteFile(ignore, []byte("openspec/\nAGENTS.md\n.claude/\n"), 0644); err != nil {
+	if err := os.WriteFile(ignore, []byte(`openspec/
+AGENTS.md
+.claude/
+`), 0644); err != nil {
 		t.Fatalf("write global ignore: %v", err)
 	}
 	gcfg := filepath.Join(dir, "gitconfig")
-	if err := os.WriteFile(gcfg, []byte("[core]\n\texcludesFile = "+ignore+"\n"), 0644); err != nil {
+	configTemplate := template.Must(template.New("git-config").Parse(`[core]
+	excludesFile = {{.}}
+`))
+	var config bytes.Buffer
+	if err := configTemplate.Execute(&config, ignore); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(gcfg, config.Bytes(), 0644); err != nil {
 		t.Fatalf("write global gitconfig: %v", err)
 	}
 	t.Setenv("GIT_CONFIG_GLOBAL", gcfg)

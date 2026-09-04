@@ -48,7 +48,7 @@ Unarchiving does not prompt for confirmation, because nothing is destroyed.`,
 		}
 
 		fmt.Fprintln(os.Stderr, ui.Successf("Restored session %s", ui.AccentBold(name)))
-		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Faint("path:"), sessionPath)
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Faint("path:"), contractHome(sessionPath))
 		return nil
 	},
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/roshbhatia/go-utils/ui"
+	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -19,8 +20,15 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	// Runs after argument and flag validation, so usage still prints for a
 	// malformed invocation but not for a runtime failure like "session not found".
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		if cmd == configEditCmd || cmd == configInitCmd {
+			return nil
+		}
+		if _, err := config.Load(); err != nil {
+			return fmt.Errorf("loading config: %w", err)
+		}
+		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sessions, err := session.List()

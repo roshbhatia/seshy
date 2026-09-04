@@ -1,8 +1,12 @@
 version: 2
 
+before:
+  hooks:
+    - go run ./cmd/sy generate --check
+
 builds:
   - id: seshy
-    main: .
+    main: ./cmd/sy
     binary: sy
     env:
       - CGO_ENABLED=0
@@ -12,12 +16,44 @@ builds:
       - -s -w
 
 archives:
-  - formats: [tar.gz]
+  - id: seshy
+    ids: [seshy]
+    formats: [tar.gz]
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - src: completions/*
+        dst: completions
+      - LICENSE
+      - README.md
 
 checksum:
   name_template: checksums.txt
 
 changelog:
   use: github-native
+
+homebrew_casks:
+  - name: seshy
+    ids: [seshy]
+    binaries: [sy]
+    homepage: https://github.com/roshbhatia/seshy
+    description: Multi-repository worktree session manager
+    generate_completions_from_executable:
+      executable: sy
+      args: [completion]
+      base_name: sy
+      shell_parameter_format: cobra
+      shells: [bash, zsh, fish]
+    hooks:
+      post:
+        install: |
+          nushell_completion = "#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/sy.nu"
+          FileUtils.mkdir_p(File.dirname(nushell_completion))
+          File.write(nushell_completion, Utils.safe_popen_read("#{staged_path}/sy", "completion", "nu"))
+        uninstall: |
+          FileUtils.rm_f("#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/sy.nu")
+    repository:
+      owner: roshbhatia
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"

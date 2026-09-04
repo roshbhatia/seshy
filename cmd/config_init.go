@@ -32,8 +32,11 @@ var configInitCmd = &cobra.Command{
 		// Write config.yaml if missing
 		cfgPath := config.ConfigPath()
 		if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(filepath.Dir(cfgPath), 0755); err != nil {
+				return fmt.Errorf("creating config parent: %w", err)
+			}
 			content := `# seshy configuration
-# See: https://github.com/roshbhatia/sysinit/pkgs/seshy
+# See: https://github.com/roshbhatia/seshy
 
 # Branch naming template (Go template)
 # Variables: .Session, .Repo, .User
@@ -41,6 +44,9 @@ branchFormat: "sy/{{.Session}}/{{.Repo}}"
 
 # Sessions storage directory (default: $XDG_STATE_HOME/seshy/sessions)
 sessionsDir: ""
+
+# Archive storage directory (default: sibling of sessionsDir)
+archiveDir: ""
 
 # External tool commands
 repoSource: "zoxide query --list"

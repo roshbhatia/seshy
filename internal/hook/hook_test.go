@@ -1,12 +1,24 @@
 package hook
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
+	texttemplate "text/template"
 
 	"github.com/roshbhatia/seshy/internal/tmpl"
 )
+
+func renderShellFixture(t *testing.T, source string, data any) string {
+	t.Helper()
+	parsed := texttemplate.Must(texttemplate.New("shell-fixture").Parse(source))
+	var rendered bytes.Buffer
+	if err := parsed.Execute(&rendered, data); err != nil {
+		t.Fatalf("render shell fixture: %v", err)
+	}
+	return rendered.String()
+}
 
 func testData(dir string) tmpl.TemplateData {
 	return tmpl.TemplateData{
@@ -31,7 +43,7 @@ func TestRunSimple(t *testing.T) {
 func TestRunWithTemplate(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "marker")
-	cmd := "echo {{.Session}} > " + marker
+	cmd := renderShellFixture(t, `echo {{"{{.Session}}"}} > {{.}}`, marker)
 	errs := Run("post-create", []string{cmd}, testData(dir), dir)
 	if len(errs) != 0 {
 		t.Errorf("unexpected errors: %v", errs)
@@ -45,7 +57,7 @@ func TestRunWithTemplate(t *testing.T) {
 func TestRunSetsEnv(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "env")
-	cmd := "echo $SESHY_SESSION,$SESHY_REPO_COUNT,$SESHY_EVENT > " + marker
+	cmd := renderShellFixture(t, `echo $SESHY_SESSION,$SESHY_REPO_COUNT,$SESHY_EVENT > {{.}}`, marker)
 	errs := Run("post-create", []string{cmd}, testData(dir), dir)
 	if len(errs) != 0 {
 		t.Errorf("unexpected errors: %v", errs)
@@ -68,7 +80,10 @@ func TestRunMultiple(t *testing.T) {
 	dir := t.TempDir()
 	m1 := filepath.Join(dir, "m1")
 	m2 := filepath.Join(dir, "m2")
-	cmds := []string{"touch " + m1, "touch " + m2}
+	cmds := []string{
+		renderShellFixture(t, `touch {{.}}`, m1),
+		renderShellFixture(t, `touch {{.}}`, m2),
+	}
 	errs := Run("post-create", cmds, testData(dir), dir)
 	if len(errs) != 0 {
 		t.Errorf("unexpected errors: %v", errs)
@@ -97,7 +112,9 @@ func TestRunHookScript(t *testing.T) {
 	hooksDir := filepath.Join(cfgDir, "seshy", "hooks")
 	os.MkdirAll(hooksDir, 0755)
 	marker := filepath.Join(dir, "script-ran")
-	script := "#!/bin/sh\ntouch " + marker + "\n"
+	script := renderShellFixture(t, `#!/bin/sh
+touch {{.}}
+`, marker)
 	scriptPath := filepath.Join(hooksDir, "post-create")
 	os.WriteFile(scriptPath, []byte(script), 0755)
 

@@ -1,16 +1,21 @@
 package session
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/roshbhatia/seshy/internal/config"
 	"github.com/roshbhatia/seshy/internal/tmpl"
 )
+
+var addErrorsTemplate = template.Must(template.New("add-errors").Parse(`failed to add {{.Count}} repo(s):{{range .Errors}}
+  {{.Repo}}: {{.Err}}{{end}}`))
 
 // Session represents a seshy session.
 type Session struct {
@@ -40,11 +45,22 @@ func (r AddResult) Err() error {
 	if len(r.Errors) == 0 {
 		return nil
 	}
-	var parts []string
-	for repo, err := range r.Errors {
-		parts = append(parts, fmt.Sprintf("  %s: %v", repo, err))
+	type errorEntry struct {
+		Repo string
+		Err  error
 	}
-	return fmt.Errorf("failed to add %d repo(s):\n%s", len(r.Errors), strings.Join(parts, "\n"))
+	entries := make([]errorEntry, 0, len(r.Errors))
+	for repo, err := range r.Errors {
+		entries = append(entries, errorEntry{Repo: repo, Err: err})
+	}
+	var message bytes.Buffer
+	if err := addErrorsTemplate.Execute(&message, struct {
+		Count  int
+		Errors []errorEntry
+	}{Count: len(entries), Errors: entries}); err != nil {
+		return fmt.Errorf("render add errors: %w", err)
+	}
+	return errors.New(message.String())
 }
 
 // ValidateSessionName checks if a session name is valid.

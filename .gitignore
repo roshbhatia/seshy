@@ -2,6 +2,7 @@
 
 # Go build artifacts
 bin/
+dist/
 *.out
 coverage.html
 

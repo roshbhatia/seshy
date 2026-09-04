@@ -4,10 +4,10 @@ vars:
   INSTALL_DIR: '{{.HOME}}/.local/bin'
 tasks:
   build:
-    desc: Build sesh binary
+    desc: Build the sy binary
     cmds:
       - mkdir -p bin
-      - go build -o bin/{{.BINARY_NAME}} .
+      - go build -o bin/{{.BINARY_NAME}} ./cmd/sy
     sources:
       - '**/*.go'
       - go.mod
@@ -15,7 +15,7 @@ tasks:
     generates:
       - bin/{{.BINARY_NAME}}
   install:
-    desc: Install sesh to ~/bin
+    desc: Install sy to the configured local bin directory
     deps:
       - build
     cmds:
@@ -24,14 +24,14 @@ tasks:
       - chmod +x {{.INSTALL_DIR}}/{{.BINARY_NAME}}
       - echo "Installed sy to {{.INSTALL_DIR}}/{{.BINARY_NAME}}"
   uninstall:
-    desc: Uninstall sesh from ~/bin
+    desc: Uninstall sy from the configured local bin directory
     cmds:
       - rm -f {{.INSTALL_DIR}}/{{.BINARY_NAME}}
       - echo "Uninstalled sy"
   test:
-    desc: Run all unit tests
+    desc: Run all tests with the race detector
     cmds:
-      - go test ./... -v
+      - go test -race ./... -v
   test-short:
     desc: Run unit tests without verbose output
     cmds:
@@ -45,13 +45,13 @@ tasks:
   test-integration:
     desc: Run integration tests inside Docker
     cmds:
-      - docker build -f test/integration/Dockerfile -t sesh-integration .
-      - docker run --rm sesh-integration
+      - docker build -f test/integration/Dockerfile -t seshy-integration .
+      - docker run --rm seshy-integration
   test-e2e:
     desc: Run end-to-end tests inside Docker
     cmds:
-      - docker build -f test/e2e/Dockerfile -t sesh-e2e .
-      - docker run --rm sesh-e2e
+      - docker build -f test/e2e/Dockerfile -t seshy-e2e .
+      - docker run --rm seshy-e2e
   test-all:
     desc: Run unit, integration, and e2e tests
     cmds:
@@ -74,10 +74,18 @@ tasks:
       - rm -f coverage.out coverage.html
       - echo "Cleaned build artifacts"
   clean-sessions:
-    desc: Clean up all sessions
+    desc: Remove active and archived seshy sessions
     cmds:
-      - rm -rf "$${XDG_STATE_HOME:-$$HOME/.local/state}/sesh"
+      - rm -rf "$${XDG_STATE_HOME:-$$HOME/.local/state}/seshy"
       - echo "Cleaned up all sessions"
+  generate:
+    desc: Generate schema, README command docs, and shell completions
+    cmds:
+      - go run ./cmd/sy generate
+  generate-check:
+    desc: Check generated files
+    cmds:
+      - go run ./cmd/sy generate --check
   dev:
     desc: Build and install for development
     cmds:

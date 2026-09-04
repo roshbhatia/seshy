@@ -1,9 +1,11 @@
 package session
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"text/template"
 
 	"github.com/roshbhatia/go-utils/agents"
 )
@@ -19,6 +21,11 @@ var sharedArtifacts = []string{
 // dir per agent. It stands in when the registry is unreadable, so an unwritten
 // or malformed file loses no artifact that was kept before.
 var fallbackAgentDirs = []string{".claude/"}
+
+var sessionIgnoreTemplate = template.Must(template.New("session-gitignore").Parse(`# seshy-managed: regenerated on session changes — do not edit
+{{range .Repos}}{{.Name}}
+{{end}}{{range .Artifacts}}!{{.}}
+{{end}}`))
 
 // coordinationArtifacts is the shared set plus one directory per declared
 // agent. Naming only Claude Code's here is what silently dropped a session's
@@ -55,15 +62,16 @@ func syncSessionIgnore(sessionPath string, repos []RepoInfo) error {
 		return nil
 	}
 
-	var lines []string
-	lines = append(lines, "# seshy-managed: regenerated on session changes — do not edit")
-	for _, r := range repos {
-		lines = append(lines, r.Name)
+	data := struct {
+		Repos     []RepoInfo
+		Artifacts []string
+	}{
+		Repos:     repos,
+		Artifacts: coordinationArtifacts(),
 	}
-	for _, a := range coordinationArtifacts() {
-		lines = append(lines, "!"+a)
+	var content bytes.Buffer
+	if err := sessionIgnoreTemplate.Execute(&content, data); err != nil {
+		return fmt.Errorf("render session gitignore: %w", err)
 	}
-
-	content := strings.Join(lines, "\n") + "\n"
-	return os.WriteFile(sessionIgnorePath(sessionPath), []byte(content), 0644)
+	return os.WriteFile(sessionIgnorePath(sessionPath), content.Bytes(), 0644)
 }

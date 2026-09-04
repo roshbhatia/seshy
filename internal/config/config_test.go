@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,6 +145,77 @@ func TestLoadInvalidYAML(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Error("expected error for invalid YAML")
+	}
+}
+
+func TestLoadRejectsUnknownField(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if err := os.MkdirAll(filepath.Join(dir, "seshy"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "seshy", "config.yaml"), []byte("branchFromat: broken\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "field branchFromat not found") {
+		t.Fatalf("Load unknown field = %v", err)
+	}
+}
+
+func TestLoadEnvironmentOverrides(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("SESHY_BRANCH_FORMAT", "work/{{.Session}}")
+	t.Setenv("SESHY_DEFAULT_REPOS", `["/src/api","/src/web"]`)
+	t.Setenv("SESHY_HOOKS_POST_CREATE", `["direnv allow"]`)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.BranchFormat != "work/{{.Session}}" || len(cfg.DefaultRepos) != 2 || len(cfg.Hooks.PostCreate) != 1 {
+		t.Fatalf("environment overrides not applied: %#v", cfg)
+	}
+}
+
+func TestLoadConfigPathOverride(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "custom.yaml")
+	if err := os.WriteFile(path, []byte("repoSource: custom-source\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SESHY_CONFIG", path)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RepoSource != "custom-source" || ConfigPath() != path {
+		t.Fatalf("custom path not used: path=%q config=%#v", ConfigPath(), cfg)
+	}
+}
+
+func TestWriteDefaultCreatesCustomConfigParent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nested", "config.yaml")
+	t.Setenv("SESHY_CONFIG", path)
+	if err := WriteDefault(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("custom config was not created: %v", err)
+	}
+}
+
+func TestSchemaDescribesExistingFields(t *testing.T) {
+	raw, err := Schema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	for _, field := range []string{"branchFormat", "sessionsDir", "archiveDir", "repoSource", "sessionPicker", "hooks"} {
+		if !strings.Contains(text, `"`+field+`"`) {
+			t.Fatalf("schema omits %q", field)
+		}
 	}
 }
 

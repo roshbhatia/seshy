@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "HooksConfig": {
+      "properties": {
+        "postCreate": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "postAdd": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "preDelete": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "properties": {
+    "branchFormat": {
+      "type": "string"
+    },
+    "sessionsDir": {
+      "type": "string"
+    },
+    "archiveDir": {
+      "type": "string"
+    },
+    "repoSource": {
+      "type": "string"
+    },
+    "picker": {
+      "type": "string"
+    },
+    "sessionPicker": {
+      "type": "string"
+    },
+    "defaultRepos": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "hooks": {
+      "$ref": "#/$defs/HooksConfig"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "title": "Seshy configuration"
+}

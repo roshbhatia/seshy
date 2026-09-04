@@ -45,7 +45,9 @@ func TestRenderFile(t *testing.T) {
 func TestRenderFileWithRepoData(t *testing.T) {
 	dir := t.TempDir()
 	tmplPath := filepath.Join(dir, "envrc.tmpl")
-	os.WriteFile(tmplPath, []byte("export SVC={{.Repo}}\nexport BRANCH={{.Branch}}\n"), 0644)
+	os.WriteFile(tmplPath, []byte(`export SVC={{.Repo}}
+export BRANCH={{.Branch}}
+`), 0644)
 
 	outPath := filepath.Join(dir, ".envrc")
 	data := TemplateData{Repo: "api", Branch: "sy/feat/api"}
@@ -126,8 +128,10 @@ func TestTemplateDataRepoRange(t *testing.T) {
 	dir := t.TempDir()
 	tmplDir := filepath.Join(dir, "templates")
 	os.MkdirAll(tmplDir, 0755)
-	os.WriteFile(filepath.Join(tmplDir, "Makefile.tmpl"), []byte(
-		".PHONY: all\nall:{{range .Repos}}\n\t$(MAKE) -C {{.Name}}{{end}}\n"), 0644)
+	os.WriteFile(filepath.Join(tmplDir, "Makefile.tmpl"), []byte(`.PHONY: all
+all:{{range .Repos}}
+	$(MAKE) -C {{.Name}}{{end}}
+`), 0644)
 
 	outDir := filepath.Join(dir, "output")
 	os.MkdirAll(outDir, 0755)

@@ -51,7 +51,7 @@ Archiving does not prompt for confirmation, because nothing is destroyed.`,
 		}
 
 		fmt.Fprintln(os.Stderr, ui.Successf("Archived session %s", ui.AccentBold(name)))
-		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Faint("path:"), archivePath)
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Faint("path:"), contractHome(archivePath))
 		return nil
 	},
 }

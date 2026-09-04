@@ -11,8 +11,33 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
+      - run: nix develop --command go test -race ./...
+      - run: nix develop --command go run ./cmd/sy generate --check
+      - run: nix develop --command actionlint
       - run: nix flake check --print-build-logs
+
+  release-snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command goreleaser release --snapshot --clean --skip publish
+        env:
+          HOMEBREW_TAP_TOKEN: snapshot
+      - run: |
+          test "$(find dist -name '*.tar.gz' | wc -l)" -eq 4
+          for archive in dist/*.tar.gz; do
+            tar -tzf "$archive" | grep -F 'completions/sy.nu'
+            tar -tzf "$archive" | grep -F 'README.md'
+            tar -tzf "$archive" | grep -F 'LICENSE'
+          done
