@@ -9,7 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
+
+	sessionstore "github.com/roshbhatia/seshy/internal/session"
 )
 
 type request struct {
@@ -18,7 +21,8 @@ type request struct {
 	RequestID  string `json:"requestId"`
 	Capability string `json:"capability"`
 	Input      struct {
-		ID string `json:"id"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
 	} `json:"input"`
 }
 type response struct {
@@ -91,6 +95,13 @@ func main() {
 	if len(os.Args) > 1 {
 		core = os.Args[1]
 	}
+	if len(os.Args) == 4 && os.Args[2] == "--create" {
+		if err := startCreatedSession(adapter{core: core, timeout: 4 * time.Second}, os.Args[3]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := serve(os.Stdin, os.Stdout, adapter{core: core, timeout: 4 * time.Second}); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -117,7 +128,29 @@ func (a adapter) handle(r request) (any, error) {
 		}
 		return map[string]bool{"ok": true}, nil
 	case "picker.describe":
-		return map[string]string{"title": "Sessions", "icon": "md_layers"}, nil
+		return map[string]any{"title": "Sessions", "icon": "md_layers", "create": map[string]string{"label": "New session", "prompt": "Session name"}}, nil
+	case "picker.create":
+		if err := sessionstore.ValidateSessionName(r.Input.Name); err != nil {
+			return nil, err
+		}
+		rows, err := a.sessions()
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			if row.Name == r.Input.Name {
+				return nil, errors.New("session already exists")
+			}
+		}
+		helper, err := os.Executable()
+		if err != nil {
+			return nil, err
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		return plan{"spawn", r.Input.Name, home, []string{helper, a.core, "--create", r.Input.Name}, map[string]string{}}, nil
 	case "picker.list":
 		rows, err := a.sessions()
 		if err != nil {
@@ -166,4 +199,59 @@ func (a adapter) handle(r request) (any, error) {
 	default:
 		return nil, errors.New("unsupported capability")
 	}
+}
+
+func (a adapter) createInteractive(name string, in io.Reader, out, errout io.Writer) (*plan, error) {
+	if err := sessionstore.ValidateSessionName(name); err != nil {
+		return nil, err
+	}
+	command := exec.Command(a.core, "new", name)
+	command.Stdin, command.Stdout, command.Stderr = in, out, errout
+	if err := command.Run(); err != nil {
+		return nil, fmt.Errorf("create session: %w", err)
+	}
+	rows, err := a.sessions()
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if row.Name == name {
+			r := request{Capability: "picker.open"}
+			r.Input.ID = name
+			value, err := a.handle(r)
+			if err != nil {
+				return nil, err
+			}
+			created := value.(plan)
+			return &created, nil
+		}
+	}
+	return nil, nil
+}
+
+func startCreatedSession(a adapter, name string) error {
+	var shell []string
+	if err := json.Unmarshal([]byte(os.Getenv("WEZTERM_PICKER_SHELL")), &shell); err != nil || len(shell) == 0 || shell[0] == "" {
+		return errors.New("missing WezTerm shell command")
+	}
+	program, err := exec.LookPath(shell[0])
+	if err != nil {
+		return err
+	}
+	created, err := a.createInteractive(name, os.Stdin, os.Stdout, os.Stderr)
+	if err != nil || created == nil {
+		return err
+	}
+	if err := os.Chdir(created.Cwd); err != nil {
+		return err
+	}
+	for key, value := range created.Environment {
+		if err := os.Setenv(key, value); err != nil {
+			return err
+		}
+	}
+	if err := os.Unsetenv("WEZTERM_PICKER_SHELL"); err != nil {
+		return err
+	}
+	return syscall.Exec(program, shell, os.Environ())
 }

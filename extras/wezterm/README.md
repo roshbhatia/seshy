@@ -2,6 +2,10 @@
 
 Open Seshy sessions from the WezTerm picker.
 
+The provider advertises `picker.create`. Choose `New session`, enter a valid Seshy name, then select repositories in the terminal.
+The helper runs `sy new` and starts WezTerm's configured shell in the new session.
+Cancelling repository selection closes the temporary terminal. Existing sessions are never replaced.
+
 ## Install
 
 ```sh
