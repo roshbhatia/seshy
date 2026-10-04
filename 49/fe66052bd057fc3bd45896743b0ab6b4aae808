@@ -1,0 +1,61 @@
+README.md
+  s_e4ed06871265ed::t_25f54831b3875c 13-14,74,195,251,309-332
+cmd/add.go
+  s_e4ed06871265ed::t_58476a0830c967 18,95-101,151,160
+cmd/cmd_test.go
+  s_e4ed06871265ed::t_53b22526752a38 89-93
+cmd/generate.go
+  s_e4ed06871265ed::t_f0e7d4a4353731 125,131
+cmd/new.go
+  s_e4ed06871265ed::t_f224e882999f57 19,78-84,126,136
+cmd/prune.go
+  s_e4ed06871265ed::t_cdb9890eac61a3 13,31-37,56
+cmd/root.go
+  s_e4ed06871265ed::t_c1d6d2e4a67e7d 16
+cmd/schemas.go
+  s_e4ed06871265ed::t_b10e3253c5d67a 7,14-17,35-38,40-43
+cmd/worktrees.go
+  s_e4ed06871265ed::t_32a3fbefc11fae 1-80
+cmd/worktrees_test.go
+  s_e4ed06871265ed::t_59675f0ba453a6 1-29
+completions/sy.bash
+  s_e4ed06871265ed::t_01436e49bc4c09 2,98-99,108-109,116-117,144,154,165,219,240,280-284
+completions/sy.fish
+  s_e4ed06871265ed::t_f93bd168a0800d 5,110-114,132-136,152-156,207-208,236,242,266,274,285-286
+completions/sy.nu
+  s_e4ed06871265ed::t_505949206d3908 9,29,90,111,147-152,178
+completions/sy.zsh
+  s_e4ed06871265ed::t_12f7c4450ea06f 4,113-114,123-124,131-132,159,179,251,276,318-324
+docs/.seshy-media.sha256
+  s_e4ed06871265ed::t_21f7aa084fe771 1
+docs/worktree-lifecycle.md
+  s_e4ed06871265ed::t_e1a6a7cff67d2a 1-76
+internal/session/inventory.go
+  s_e4ed06871265ed::t_adef1df947ccf6 1-290
+internal/session/inventory_test.go
+  s_e4ed06871265ed::t_ac639610e2af7b 1-251
+internal/session/session.go
+  s_e4ed06871265ed::t_26b46f74250ae4 171-176
+internal/session/worktree.go
+  s_e4ed06871265ed::t_2231dabe802d37 45-47,309-368
+schema/worktrees.v1.schema.json
+  s_e4ed06871265ed::t_db7507860f4323 1-165
+test/integration/run_tests.sh
+  s_e4ed06871265ed::t_fc0ede710b9a92 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49fe66052bd057fc3bd45896743b0ab6b4aae808",
+  "prompts": {},
+  "sessions": {
+    "s_e4ed06871265ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10455-7ba4-74e1-8b4d-13ded1579742",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Roshan Bhatia <rshnbhatia@gmail.com>"
+    }
+  }
+}
