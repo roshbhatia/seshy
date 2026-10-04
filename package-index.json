@@ -13,7 +13,8 @@
         "roshbhatia/tap/seshy"
       ],
       "manifest_path": "share/wezterm/providers/seshy.json",
-      "status": "pending"
+      "status": "pending",
+      "runtime_note": "The provider advertises `picker.create`. Choose `New session`, enter a valid Seshy name, then select repositories in the terminal.\nThe helper runs `sy new` and starts WezTerm's configured shell in the new session.\nCancelling repository selection closes the temporary terminal. Existing sessions are never replaced."
     }
   ],
   "packages": [
