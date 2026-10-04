@@ -1,0 +1,23 @@
+extras/wezterm/README.md
+  s_e4ed06871265ed::t_8b3107a34de5d7 14-17
+extras/wezterm/demo.json
+  s_e4ed06871265ed::t_8eb47cc58a3f5e 13-14
+package-index.json
+  s_e4ed06871265ed::t_5d9eb149e5f93f 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "765a2a286a801faeed9a5a55a103bee8d284846b",
+  "prompts": {},
+  "sessions": {
+    "s_e4ed06871265ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10455-7ba4-74e1-8b4d-13ded1579742",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Roshan Bhatia <rshnbhatia@gmail.com>"
+    }
+  }
+}
