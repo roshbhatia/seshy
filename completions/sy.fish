@@ -2,7 +2,7 @@ complete -c sy -e
 complete -c sy -f
 function __sy_completion_values_0
   begin
-    printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive'
+    printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive' 'worktrees'
     command 'sy' '__values' 'active' (commandline -cp) 2>/dev/null; or true
   end | string match -rv '\t'; or true
 end
@@ -107,6 +107,11 @@ function __sy_completion_context
         continue
       case 'add:-b=*'
         continue
+      case 'add:--sparse-directory'
+        set consume_value 1
+        continue
+      case 'add:--sparse-directory=*'
+        continue
       case 'add:--start-point'
         set consume_value 1
         continue
@@ -124,6 +129,11 @@ function __sy_completion_context
         continue
       case 'new:-b=*'
         continue
+      case 'new:--sparse-directory'
+        set consume_value 1
+        continue
+      case 'new:--sparse-directory=*'
+        continue
       case 'new:--start-point'
         set consume_value 1
         continue
@@ -138,6 +148,11 @@ function __sy_completion_context
         set consume_value 1
         continue
       case 'status:--format=*'
+        continue
+      case 'worktrees:--format'
+        set consume_value 1
+        continue
+      case 'worktrees:--format=*'
         continue
     end
     switch "$context:$word"
@@ -189,6 +204,8 @@ function __sy_completion_context
         set context 'switch'
       case ':unarchive'
         set context 'unarchive'
+      case ':worktrees'
+        set context 'worktrees'
     end
   end
   echo $context
@@ -216,11 +233,13 @@ complete -c sy -f -n 'test (__sy_completion_context) = ""' -a source -d 'sy sour
 complete -c sy -f -n 'test (__sy_completion_context) = ""' -a status -d 'sy status [name] [flags]'
 complete -c sy -f -n 'test (__sy_completion_context) = ""' -a switch -d 'sy switch <name> [flags]'
 complete -c sy -f -n 'test (__sy_completion_context) = ""' -a unarchive -d 'sy unarchive [name] [flags]'
+complete -c sy -f -n 'test (__sy_completion_context) = ""' -a worktrees -d 'sy worktrees [repo...] [flags]'
 complete -c sy -f -n 'test (__sy_completion_context) = ""' -a '(__sy_completion_values_0)'
 complete -c sy -f -n 'test (__sy_completion_context) = "completion"' -a 'bash zsh fish nu'
 complete -c sy -n 'test (__sy_completion_context) = "add"' -l branch -s b -r -d 'Override branch name for all worktrees'
 complete -c sy -n 'test (__sy_completion_context) = "add"' -l existing -d 'Check out the existing branch named by --branch'
 complete -c sy -n 'test (__sy_completion_context) = "add"' -l reference -d 'Link existing directories without creating worktrees'
+complete -c sy -n 'test (__sy_completion_context) = "add"' -l sparse-directory -r -d 'Check out only this directory and root files (repeatable)'
 complete -c sy -n 'test (__sy_completion_context) = "add"' -l start-point -r -d 'Commit to start a new branch from (default HEAD)'
 complete -c sy -n 'test (__sy_completion_context) = "add"' -l stdin -d 'Read repo paths from stdin'
 complete -c sy -f -n 'test (__sy_completion_context) = "add"' -a '(__sy_completion_values_1)'
@@ -244,6 +263,7 @@ complete -c sy -n 'test (__sy_completion_context) = "new"' -l branch -s b -r -d 
 complete -c sy -n 'test (__sy_completion_context) = "new"' -l empty -d 'Create the session with no repositories'
 complete -c sy -n 'test (__sy_completion_context) = "new"' -l existing -d 'Check out the existing branch named by --branch'
 complete -c sy -n 'test (__sy_completion_context) = "new"' -l reference -d 'Link existing directories without creating worktrees'
+complete -c sy -n 'test (__sy_completion_context) = "new"' -l sparse-directory -r -d 'Check out only this directory and root files (repeatable)'
 complete -c sy -n 'test (__sy_completion_context) = "new"' -l start-point -r -d 'Commit to start a new branch from (default HEAD)'
 complete -c sy -n 'test (__sy_completion_context) = "new"' -l stdin -d 'Read repo paths from stdin'
 complete -c sy -f -n 'test (__sy_completion_context) = "new"' -a '(__sy_completion_values_6)'
@@ -251,6 +271,7 @@ complete -c sy -n 'test (__sy_completion_context) = "open"' -l format -r -d 'Out
 complete -c sy -f -n 'test (__sy_completion_context) = "open"' -a '(__sy_completion_values_7)'
 complete -c sy -f -n 'test (__sy_completion_context) = "path"' -a '(__sy_completion_values_8)'
 complete -c sy -n 'test (__sy_completion_context) = "prune"' -l dry-run -d 'Print the actions without taking them'
+complete -c sy -n 'test (__sy_completion_context) = "prune"' -l metadata-only -d 'Prune only expired Git registrations; preserve branches and references'
 complete -c sy -n 'test (__sy_completion_context) = "remove"' -l force -s f -d 'Skip confirmation prompt and remove even if worktree cleanup fails'
 complete -c sy -n 'test (__sy_completion_context) = "remove"' -l yes -s y -d 'Skip the confirmation prompt'
 complete -c sy -f -n 'test (__sy_completion_context) = "remove"' -a '(__sy_completion_values_9)'
@@ -261,3 +282,5 @@ complete -c sy -f -n 'test (__sy_completion_context) = "status"' -a '(__sy_compl
 complete -c sy -n 'test (__sy_completion_context) = "switch"' -l name -d 'Print the resolved name instead of the path'
 complete -c sy -f -n 'test (__sy_completion_context) = "switch"' -a '(__sy_completion_values_12)'
 complete -c sy -f -n 'test (__sy_completion_context) = "unarchive"' -a '(__sy_completion_values_13)'
+complete -c sy -n 'test (__sy_completion_context) = "worktrees"' -l disk-usage -d 'Measure shared Git and checkout allocated bytes'
+complete -c sy -n 'test (__sy_completion_context) = "worktrees"' -l format -r -d 'Output format: table, json'

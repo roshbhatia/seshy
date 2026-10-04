@@ -6,7 +6,7 @@ export def --env sy [
   if $greedy != null {
     return (^sy --greedy $greedy ...$args)
   }
-  if (($args | length) == 1) and (not ($args.0 | str starts-with "-")) and ($args.0 not-in ["__values" "add" "archive" "at" "attach" "completion" "config" "cur" "current" "delete" "generate" "help" "info" "init" "list" "ls" "new" "open" "path" "provider" "prune" "remove" "rename" "restore" "rm" "source" "status" "sw" "switch" "unarchive"]) {
+  if (($args | length) == 1) and (not ($args.0 | str starts-with "-")) and ($args.0 not-in ["__values" "add" "archive" "at" "attach" "completion" "config" "cur" "current" "delete" "generate" "help" "info" "init" "list" "ls" "new" "open" "path" "provider" "prune" "remove" "rename" "restore" "rm" "source" "status" "sw" "switch" "unarchive" "worktrees"]) {
     let resolved = (^sy --greedy $args.0 | complete)
     if ($resolved.exit_code == 0) and (not ($resolved.stdout | str trim | is-empty)) {
       cd ($resolved.stdout | str trim)
@@ -26,6 +26,7 @@ export extern "sy add" [
   --branch(-b): string # Override branch name for all worktrees
   --existing # Check out the existing branch named by --branch
   --reference # Link existing directories without creating worktrees
+  --sparse-directory: string # Check out only this directory and root files (repeatable)
   --start-point: string # Commit to start a new branch from (default HEAD)
   --stdin # Read repo paths from stdin
   ...args: string@"__sy_completion_values_1"
@@ -86,6 +87,7 @@ export extern "sy new" [
   --empty # Create the session with no repositories
   --existing # Check out the existing branch named by --branch
   --reference # Link existing directories without creating worktrees
+  --sparse-directory: string # Check out only this directory and root files (repeatable)
   --start-point: string # Commit to start a new branch from (default HEAD)
   --stdin # Read repo paths from stdin
   ...args: string@"__sy_completion_values_6"
@@ -106,6 +108,7 @@ export extern "sy provider" [
 
 export extern "sy prune" [
   --dry-run # Print the actions without taking them
+  --metadata-only # Prune only expired Git registrations; preserve branches and references
   ...args: string@"__sy_completion_none"
 ]
 
@@ -141,6 +144,12 @@ export extern "sy unarchive" [
   ...args: string@"__sy_completion_values_13"
 ]
 
+export extern "sy worktrees" [
+  --disk-usage # Measure shared Git and checkout allocated bytes
+  --format: string # Output format: table, json
+  ...args: string@"__sy_completion_none"
+]
+
 def "__sy_completion_none" [] { [] }
 
 def "__sy_completion_values_0" [context?: string] {
@@ -166,6 +175,7 @@ def "__sy_completion_values_0" [context?: string] {
     "status"
     "switch"
     "unarchive"
+    "worktrees"
     (try { run-external "sy" "__values" "active" ($context | default "") | lines } catch { [] })
   ] | flatten | uniq
 }

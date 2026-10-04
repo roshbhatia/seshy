@@ -4,15 +4,17 @@ import (
 	"os"
 
 	goconfig "github.com/roshbhatia/go-utils/config"
+	"github.com/roshbhatia/seshy/internal/session"
 )
 
 // Plumbing output schemas, generated from the Go structs that render each
 // document and held by "sy generate --check". A consumer validates the output
 // of the matching command against the file of the same version.
 const (
-	listSchemaFile   = "schema/list.v1.schema.json"
-	statusSchemaFile = "schema/status.v1.schema.json"
-	openSchemaFile   = "schema/open.v1.schema.json"
+	worktreesSchemaFile = "schema/worktrees.v1.schema.json"
+	listSchemaFile      = "schema/list.v1.schema.json"
+	statusSchemaFile    = "schema/status.v1.schema.json"
+	openSchemaFile      = "schema/open.v1.schema.json"
 )
 
 // outputSchemas maps each plumbing schema file to its rendered bytes. list is
@@ -30,10 +32,15 @@ func outputSchemas() (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	worktrees, err := goconfig.Schema[session.WorktreeInventory]("seshy.worktrees/v1")
+	if err != nil {
+		return nil, err
+	}
 	return map[string][]byte{
-		listSchemaFile:   list,
-		statusSchemaFile: status,
-		openSchemaFile:   open,
+		worktreesSchemaFile: worktrees,
+		listSchemaFile:      list,
+		statusSchemaFile:    status,
+		openSchemaFile:      open,
 	}, nil
 }
 

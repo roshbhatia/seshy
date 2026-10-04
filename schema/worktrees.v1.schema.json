@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "RepositoryInventory": {
+      "properties": {
+        "commonDir": {
+          "type": "string"
+        },
+        "sharedGitBytes": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "worktrees": {
+          "items": {
+            "$ref": "#/$defs/WorktreeInventoryEntry"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "commonDir",
+        "sharedGitBytes",
+        "worktrees"
+      ]
+    },
+    "WorktreeInventoryEntry": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "sessions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bare": {
+          "type": "boolean"
+        },
+        "detached": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "prunable": {
+          "type": "boolean"
+        },
+        "missing": {
+          "type": "boolean"
+        },
+        "dirty": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "upstream": {
+          "type": "string"
+        },
+        "ahead": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "behind": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checkoutBytes": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cautions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "path",
+        "head",
+        "branch",
+        "sessions",
+        "bare",
+        "detached",
+        "locked",
+        "prunable",
+        "missing",
+        "dirty",
+        "upstream",
+        "ahead",
+        "behind",
+        "checkoutBytes",
+        "cautions"
+      ]
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": [
+        "seshy.worktrees/v1"
+      ]
+    },
+    "repositories": {
+      "items": {
+        "$ref": "#/$defs/RepositoryInventory"
+      },
+      "type": "array"
+    },
+    "errors": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "version",
+    "repositories",
+    "errors"
+  ],
+  "title": "seshy.worktrees/v1"
+}

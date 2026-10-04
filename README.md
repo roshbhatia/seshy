@@ -10,6 +10,8 @@ The recording reviews real [Changes](https://github.com/roshbhatia/changes/commi
 It creates isolated worktrees, inspects release history, then archives and restores the group.
 [Recording script](hack/screenshots.sh) · [Tape](hack/seshy.tape)
 
+[Worktree ownership, harness integration, and storage](docs/worktree-lifecycle.md)
+
 ## Install
 
 ```bash
@@ -69,6 +71,7 @@ sy add <name> [repos...] [flags]
 | `--branch`, `-b` `<value>` | Override branch name for all worktrees |
 | `--existing` | Check out the existing branch named by --branch |
 | `--reference` | Link existing directories without creating worktrees |
+| `--sparse-directory` `<value>` | Check out only this directory and root files (repeatable) |
 | `--start-point` `<value>` | Commit to start a new branch from (default HEAD) |
 | `--stdin` | Read repo paths from stdin |
 
@@ -189,6 +192,7 @@ sy new <name> [repos...] [flags]
 | `--empty` | Create the session with no repositories |
 | `--existing` | Check out the existing branch named by --branch |
 | `--reference` | Link existing directories without creating worktrees |
+| `--sparse-directory` `<value>` | Check out only this directory and root files (repeatable) |
 | `--start-point` `<value>` | Commit to start a new branch from (default HEAD) |
 | `--stdin` | Read repo paths from stdin |
 
@@ -244,6 +248,7 @@ taking them.
 | Option | Description |
 | --- | --- |
 | `--dry-run` | Print the actions without taking them |
+| `--metadata-only` | Prune only expired Git registrations; preserve branches and references |
 
 ### `sy remove`
 
@@ -300,6 +305,30 @@ sy unarchive [name]
 Restore an archived session back into the sessions directory.
 
 Unarchiving does not prompt for confirmation, because nothing is destroyed.
+
+### `sy worktrees`
+
+sy worktrees [repo...] [flags]
+
+Inventory Git registrations without moving or adopting worktrees.
+
+Without repo arguments, inspect the current repository and repositories linked
+from active and archived sessions. Explicit arguments restrict that scope.
+Git's common directory deduplicates linked checkouts from any harness.
+
+--disk-usage measures allocated bytes without following symlinks. Shared Git
+storage is separate; registered nested worktrees are excluded from their parent's
+checkout size. APFS clones and hardlinks across checkouts can still share blocks.
+This scan is opt-in because build and dependency directories can be large.
+
+Status includes untracked files, but excludes ignored files. Ahead/behind uses
+local upstream refs and does not fetch. Cautions are a review preview, never
+permission to delete: active processes and harness retention are not checked.
+
+| Option | Description |
+| --- | --- |
+| `--disk-usage` | Measure shared Git and checkout allocated bytes |
+| `--format` `<value>` | Output format: table, json |
 
 <!-- END GENERATED:commands -->
 

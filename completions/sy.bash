@@ -1,5 +1,5 @@
 __sy_completion_values_0() {
-  printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive'
+  printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive' 'worktrees'
   'sy' '__values' 'active' "${COMP_LINE:0:COMP_POINT}" 2>/dev/null || true
 }
 __sy_completion_values_1() {
@@ -95,6 +95,8 @@ _sy_complete() {
       'add:--branch='*) continue ;;
       'add:-b') consume_value=1; continue ;;
       'add:-b='*) continue ;;
+      'add:--sparse-directory') consume_value=1; continue ;;
+      'add:--sparse-directory='*) continue ;;
       'add:--start-point') consume_value=1; continue ;;
       'add:--start-point='*) continue ;;
       'list:--format') consume_value=1; continue ;;
@@ -103,12 +105,16 @@ _sy_complete() {
       'new:--branch='*) continue ;;
       'new:-b') consume_value=1; continue ;;
       'new:-b='*) continue ;;
+      'new:--sparse-directory') consume_value=1; continue ;;
+      'new:--sparse-directory='*) continue ;;
       'new:--start-point') consume_value=1; continue ;;
       'new:--start-point='*) continue ;;
       'open:--format') consume_value=1; continue ;;
       'open:--format='*) continue ;;
       'status:--format') consume_value=1; continue ;;
       'status:--format='*) continue ;;
+      'worktrees:--format') consume_value=1; continue ;;
+      'worktrees:--format='*) continue ;;
     esac
     case "$context:$word" in
       ':completion') context='completion' ;;
@@ -135,6 +141,7 @@ _sy_complete() {
       ':status') context='status' ;;
       ':switch') context='switch' ;;
       ':unarchive') context='unarchive' ;;
+      ':worktrees') context='worktrees' ;;
     esac
   done
   case "$context:$previous" in
@@ -144,7 +151,7 @@ _sy_complete() {
   case "$context" in
     '')
       __sy_completion_filter "$current" < <(
-        printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive' '--config' '--greedy'
+        printf '%s\n' 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive' 'worktrees' '--config' '--greedy'
         __sy_completion_values_0
       )
       ;;
@@ -155,7 +162,7 @@ _sy_complete() {
       ;;
     'add')
       __sy_completion_filter "$current" < <(
-        printf '%s\n' '--branch' '-b' '--existing' '--reference' '--start-point' '--stdin'
+        printf '%s\n' '--branch' '-b' '--existing' '--reference' '--sparse-directory' '--start-point' '--stdin'
         __sy_completion_values_1
       )
       ;;
@@ -209,7 +216,7 @@ _sy_complete() {
       ;;
     'new')
       __sy_completion_filter "$current" < <(
-        printf '%s\n' '--branch' '-b' '--empty' '--existing' '--reference' '--start-point' '--stdin'
+        printf '%s\n' '--branch' '-b' '--empty' '--existing' '--reference' '--sparse-directory' '--start-point' '--stdin'
         __sy_completion_values_6
       )
       ;;
@@ -230,7 +237,7 @@ _sy_complete() {
       ;;
     'prune')
       __sy_completion_filter "$current" < <(
-        printf '%s\n' '--dry-run'
+        printf '%s\n' '--dry-run' '--metadata-only'
       )
       ;;
     'remove')
@@ -268,6 +275,11 @@ _sy_complete() {
     'unarchive')
       __sy_completion_filter "$current" < <(
         __sy_completion_values_13
+      )
+      ;;
+    'worktrees')
+      __sy_completion_filter "$current" < <(
+        printf '%s\n' '--disk-usage' '--format'
       )
       ;;
   esac

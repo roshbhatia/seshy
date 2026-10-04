@@ -168,11 +168,12 @@ func branchForRepo(opts CreateOpts, sessionName, repoPath string) (string, error
 
 // CreateOpts holds options for session creation.
 type CreateOpts struct {
-	BranchFormat   string
-	BranchOverride string
-	StartPoint     string
-	ExistingBranch bool
-	Reference      bool
+	BranchFormat      string
+	BranchOverride    string
+	StartPoint        string
+	ExistingBranch    bool
+	Reference         bool
+	SparseDirectories []string
 	// BranchFormatFor resolves the branch-name template for one source repo,
 	// so a per-repo override can differ from BranchFormat. Nil falls back to
 	// BranchFormat.

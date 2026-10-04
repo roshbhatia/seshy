@@ -122,13 +122,13 @@ func completionValues(kind, context string) ([]string, error) {
 	case "shells":
 		return []string{"bash", "zsh", "fish", "nu"}, nil
 	case "add":
-		args := commandArguments(context, "add", map[string]bool{"--branch": true, "-b": true})
+		args := commandArguments(context, "add", map[string]bool{"--branch": true, "-b": true, "--start-point": true, "--sparse-directory": true})
 		if len(args) == 0 {
 			return completionValues("active", context)
 		}
 		return completionValues("repositories", context)
 	case "new":
-		args := commandArguments(context, "new", map[string]bool{"--branch": true, "-b": true})
+		args := commandArguments(context, "new", map[string]bool{"--branch": true, "-b": true, "--start-point": true, "--sparse-directory": true})
 		if len(args) == 0 {
 			return nil, nil
 		}

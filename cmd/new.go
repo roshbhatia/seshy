@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	newSparse    []string
 	newBranch    string
 	newStart     string
 	newExisting  bool
@@ -74,12 +75,13 @@ var newCmd = &cobra.Command{
 		}
 
 		opts := session.CreateOpts{
-			BranchFormat:    cfg.BranchFormat,
-			BranchFormatFor: branchFormatResolver(),
-			BranchOverride:  newBranch,
-			StartPoint:      newStart,
-			ExistingBranch:  newExisting,
-			Reference:       newReference,
+			BranchFormat:      cfg.BranchFormat,
+			BranchFormatFor:   branchFormatResolver(),
+			BranchOverride:    newBranch,
+			StartPoint:        newStart,
+			ExistingBranch:    newExisting,
+			Reference:         newReference,
+			SparseDirectories: newSparse,
 		}
 
 		repoInfos, err := session.Create(name, repos, opts)
@@ -121,6 +123,7 @@ var newCmd = &cobra.Command{
 }
 
 func init() {
+	newCmd.Flags().StringArrayVar(&newSparse, "sparse-directory", nil, "Check out only this directory and root files (repeatable)")
 	newCmd.Flags().StringVar(&newStart, "start-point", "", "Commit to start a new branch from (default HEAD)")
 	newCmd.Flags().BoolVar(&newExisting, "existing", false, "Check out the existing branch named by --branch")
 	newCmd.Flags().BoolVar(&newReference, "reference", false, "Link existing directories without creating worktrees")
@@ -130,5 +133,6 @@ func init() {
 	newCmd.MarkFlagsMutuallyExclusive("reference", "branch")
 	newCmd.MarkFlagsMutuallyExclusive("reference", "start-point")
 	newCmd.MarkFlagsMutuallyExclusive("existing", "start-point")
+	newCmd.MarkFlagsMutuallyExclusive("reference", "sparse-directory")
 	rootCmd.AddCommand(newCmd)
 }

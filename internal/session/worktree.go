@@ -42,6 +42,9 @@ func disambiguatedName(repoPath, sessionPath string) string {
 // CreateWorktree creates a checkout with an explicit branch policy.
 func CreateWorktree(repoPath, sessionPath, branchName string, opts CreateOpts) (worktreePath string, reused bool, err error) {
 	worktreePath = filepath.Join(sessionPath, disambiguatedName(repoPath, sessionPath))
+	if len(opts.SparseDirectories) > 0 {
+		return createSparseWorktree(repoPath, worktreePath, branchName, opts)
+	}
 	if opts.ExistingBranch {
 		if err := git.Run(repoPath, "worktree", "add", "--", worktreePath, branchName); err != nil {
 			return "", false, err
@@ -302,4 +305,64 @@ func ListRepoSources(sessionPath string) ([]string, error) {
 	}
 
 	return sources, nil
+}
+
+func createSparseWorktree(repo, path, branch string, opts CreateOpts) (string, bool, error) {
+	for _, dir := range opts.SparseDirectories {
+		if dir == "" || filepath.IsAbs(dir) || strings.ContainsAny(dir, "\n\r\x00") {
+			return "", false, fmt.Errorf("invalid sparse directory %q", dir)
+		}
+		for _, part := range strings.Split(filepath.ToSlash(dir), "/") {
+			if part == ".." {
+				return "", false, fmt.Errorf("invalid sparse directory %q", dir)
+			}
+		}
+	}
+	if opts.Reference {
+		return "", false, fmt.Errorf("sparse directories require a worktree")
+	}
+	args := []string{"worktree", "add", "--no-checkout"}
+	if opts.ExistingBranch {
+		args = append(args, "--", path, branch)
+	} else {
+		start := opts.StartPoint
+		if start == "" {
+			start = "HEAD"
+		}
+		args = append(args, "-b", branch, "--", path, start)
+	}
+	if err := git.Run(repo, args...); err != nil {
+		return "", false, err
+	}
+	if err := populateSparseWorktree(path, opts.SparseDirectories); err != nil {
+		cleanupErr := git.WorktreeRemove(repo, path, 1)
+		// Only the branch created by this failed operation belongs to rollback.
+		if cleanupErr == nil && !opts.ExistingBranch {
+			cleanupErr = git.Run(repo, "branch", "-D", branch)
+		}
+		return "", false, errors.Join(err, cleanupErr)
+	}
+	return path, opts.ExistingBranch, nil
+}
+
+func populateSparseWorktree(path string, directories []string) error {
+	for _, directory := range directories {
+		clean := filepath.ToSlash(filepath.Clean(directory))
+		if clean == "." {
+			continue
+		}
+		kind, err := git.Output(path, "cat-file", "-t", "HEAD:"+clean)
+		if err != nil {
+			return fmt.Errorf("sparse directory %q is absent from HEAD: %w", directory, err)
+		}
+		if kind != "tree" {
+			return fmt.Errorf("sparse path %q is not a directory in HEAD", directory)
+		}
+	}
+	args := append([]string{"sparse-checkout", "set", "--cone", "--"}, directories...)
+	if err := git.Run(path, args...); err != nil {
+		return err
+	}
+	// --no-checkout left an empty index; populate only the selected cone.
+	return git.Run(path, "read-tree", "-mu", "HEAD")
 }

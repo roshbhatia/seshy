@@ -1,7 +1,7 @@
 #compdef sy
 __sy_completion_values_0() {
   local -a values
-  values=( 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive')
+  values=( 'completion' 'add' 'archive' 'attach' 'config' 'current' 'delete' 'help' 'init' 'list' 'new' 'open' 'path' 'provider' 'prune' 'remove' 'rename' 'source' 'status' 'switch' 'unarchive' 'worktrees')
   values+=("${(@f)$('sy' '__values' 'active' "${BUFFER[1,CURSOR]}" 2>/dev/null)}")
   compadd -a values
 }
@@ -110,6 +110,8 @@ _sy() {
       'add:--branch='*) continue ;;
       'add:-b') consume_value=1; continue ;;
       'add:-b='*) continue ;;
+      'add:--sparse-directory') consume_value=1; continue ;;
+      'add:--sparse-directory='*) continue ;;
       'add:--start-point') consume_value=1; continue ;;
       'add:--start-point='*) continue ;;
       'list:--format') consume_value=1; continue ;;
@@ -118,12 +120,16 @@ _sy() {
       'new:--branch='*) continue ;;
       'new:-b') consume_value=1; continue ;;
       'new:-b='*) continue ;;
+      'new:--sparse-directory') consume_value=1; continue ;;
+      'new:--sparse-directory='*) continue ;;
       'new:--start-point') consume_value=1; continue ;;
       'new:--start-point='*) continue ;;
       'open:--format') consume_value=1; continue ;;
       'open:--format='*) continue ;;
       'status:--format') consume_value=1; continue ;;
       'status:--format='*) continue ;;
+      'worktrees:--format') consume_value=1; continue ;;
+      'worktrees:--format='*) continue ;;
     esac
     case "$context:$word" in
       ':completion') context='completion' ;;
@@ -150,6 +156,7 @@ _sy() {
       ':status') context='status' ;;
       ':switch') context='switch' ;;
       ':unarchive') context='unarchive' ;;
+      ':worktrees') context='worktrees' ;;
     esac
   done
   case "$context" in
@@ -169,6 +176,7 @@ _sy() {
         '(-b)--branch[Override branch name for all worktrees]:value:' \
         '--existing[Check out the existing branch named by --branch]' \
         '--reference[Link existing directories without creating worktrees]' \
+        '--sparse-directory[Check out only this directory and root files (repeatable)]:value:' \
         '--start-point[Commit to start a new branch from (default HEAD)]:value:' \
         '--stdin[Read repo paths from stdin]' \
         '*:argument:__sy_completion_values_1'
@@ -240,6 +248,7 @@ _sy() {
         '--empty[Create the session with no repositories]' \
         '--existing[Check out the existing branch named by --branch]' \
         '--reference[Link existing directories without creating worktrees]' \
+        '--sparse-directory[Check out only this directory and root files (repeatable)]:value:' \
         '--start-point[Commit to start a new branch from (default HEAD)]:value:' \
         '--stdin[Read repo paths from stdin]' \
         '*:argument:__sy_completion_values_6'
@@ -264,6 +273,7 @@ _sy() {
     'prune')
       _arguments \
         '--dry-run[Print the actions without taking them]' \
+        '--metadata-only[Prune only expired Git registrations; preserve branches and references]' \
         '*:argument:'
 
       ;;
@@ -304,6 +314,13 @@ _sy() {
     'unarchive')
       _arguments \
         '*:argument:__sy_completion_values_13'
+
+      ;;
+    'worktrees')
+      _arguments \
+        '--disk-usage[Measure shared Git and checkout allocated bytes]' \
+        '--format[Output format: table, json]:value:' \
+        '*:argument:'
 
       ;;
   esac

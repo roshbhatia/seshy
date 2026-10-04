@@ -10,6 +10,7 @@ import (
 )
 
 var pruneDryRun bool
+var pruneMetadataOnly bool
 
 var pruneCmd = &cobra.Command{
 	Use:   "prune [repo...]",
@@ -27,7 +28,13 @@ taking them.`,
 	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		repos, _ := readRepoArgs(args, false, os.Stdin)
-		actions, err := session.Prune(repos, pruneDryRun)
+		var actions []session.PruneAction
+		var err error
+		if pruneMetadataOnly {
+			actions, err = session.PruneMetadata(repos, pruneDryRun)
+		} else {
+			actions, err = session.Prune(repos, pruneDryRun)
+		}
 		for _, action := range actions {
 			if pruneDryRun {
 				fmt.Fprintln(os.Stderr, ui.Info("would "+action.String()))
@@ -46,6 +53,7 @@ taking them.`,
 }
 
 func init() {
+	pruneCmd.Flags().BoolVar(&pruneMetadataOnly, "metadata-only", false, "Prune only expired Git registrations; preserve branches and references")
 	pruneCmd.Flags().BoolVar(&pruneDryRun, "dry-run", false, "Print the actions without taking them")
 	rootCmd.AddCommand(pruneCmd)
 }

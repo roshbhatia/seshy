@@ -86,6 +86,11 @@ func runCmd(args ...string) (stdout, stderr string, err error) {
 	openFormat = ""
 	statusFormat = ""
 	pruneDryRun = false
+	pruneMetadataOnly = false
+	worktreesFormat = ""
+	worktreesDiskUsage = false
+	newSparse = nil
+	addSparse = nil
 	newBranch = ""
 	newStdin = false
 	newEmpty = false
