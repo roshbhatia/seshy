@@ -1,0 +1,25 @@
+extras/wezterm/main_test.go
+  s_a4a3eea4720821::t_fef738696fe9d8 82-109
+extras/wezterm/main.go
+  s_a4a3eea4720821::t_f630343c99ea52 65-68,135-149
+extras/wezterm/provider.json
+  s_a4a3eea4720821::t_f630343c99ea52 10-15
+extras/wezterm/README.md
+  s_a4a3eea4720821::t_4321581ebb2be8 15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d381ba9809d3d31d9e5a2b0e7f5f0919f519c787",
+  "prompts": {},
+  "sessions": {
+    "s_a4a3eea4720821": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f4ef-68fa-7c11-b609-3f16bf1d9bf7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Roshan Bhatia <rshnbhatia@gmail.com>"
+    }
+  }
+}
