@@ -1,0 +1,28 @@
+hack/screenshots.sh
+  s_0404ee690a300f::t_92f7b07bb8c8d4 20
+  s_0404ee690a300f::t_7c10605f757c19 24-32
+Taskfile.yml
+  s_0404ee690a300f::t_00bac9d8ef92ed 81-84
+docs/.seshy-media.sha256
+  s_0404ee690a300f::t_ce09bdda121756 1
+flake.nix
+  s_0404ee690a300f::t_293bf834c12c04 82,235
+hack/test-screenshots.sh
+  s_0404ee690a300f::t_4b36defbda93b4 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06c90a3653d1bd2908be90b12fadf0a4f21fe329",
+  "prompts": {},
+  "sessions": {
+    "s_0404ee690a300f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d1cc-9dc0-72c0-bb00-2d70e54676e2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Roshan Bhatia <rshnbhatia@gmail.com>"
+    }
+  }
+}
