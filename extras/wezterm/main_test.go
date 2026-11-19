@@ -79,6 +79,34 @@ printf '[]'`)
 	}
 }
 
+func TestLifecycleUsesCoreOperations(t *testing.T) {
+	for _, capability := range []string{"picker.rename", "picker.delete"} {
+		t.Run(capability, func(t *testing.T) {
+			body := `test "$#" = 3 && test "$1" = rename && test "$2" = before && test "$3" = after || exit 42`
+			if capability == "picker.delete" {
+				body = `test "$#" = 3 && test "$1" = delete && test "$2" = --yes && test "$3" = before || exit 42`
+			}
+			a := fakeCore(t, body)
+			r := request{Capability: capability}
+			r.Input.ID, r.Input.Name = "before", "after"
+			output, err := a.handle(r)
+			if err != nil || output.(map[string]string)["kind"] != "updated" {
+				t.Fatalf("lifecycle failed: %v, %v", output, err)
+			}
+			r.Input.ID = "../outside"
+			if _, err := a.handle(r); err == nil {
+				t.Fatal("invalid session ID was accepted")
+			}
+		})
+	}
+	a := fakeCore(t, `printf 'worktree has uncommitted changes' >&2; exit 1`)
+	r := request{Capability: "picker.delete"}
+	r.Input.ID = "before"
+	if _, err := a.handle(r); err == nil || !strings.Contains(err.Error(), "uncommitted changes") {
+		t.Fatalf("provider hid the core safety refusal: %v", err)
+	}
+}
+
 func TestInteractiveCreationAndCancellation(t *testing.T) {
 	cwd := t.TempDir()
 	listing, _ := json.Marshal([]session{{Name: "review", Path: cwd}})

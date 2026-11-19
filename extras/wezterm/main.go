@@ -62,6 +62,10 @@ func (a adapter) run(output any, args ...string) error {
 		return fmt.Errorf("%s: %w", a.core, ctx.Err())
 	}
 	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && len(exit.Stderr) > 0 {
+			return fmt.Errorf("%s: %s", a.core, exit.Stderr)
+		}
 		return fmt.Errorf("%s: %w", a.core, err)
 	}
 	if output == nil {
@@ -128,7 +132,21 @@ func (a adapter) handle(r request) (any, error) {
 		}
 		return map[string]bool{"ok": true}, nil
 	case "picker.describe":
-		return map[string]any{"title": "Sessions", "icon": "md_layers", "create": map[string]string{"label": "New session", "prompt": "Session name"}}, nil
+		return map[string]any{"title": "Sessions", "icon": "md_layers", "persistence": "always", "delete": map[string]string{"prompt": "Delete this Seshy session and its owned worktrees? Branches remain; normal safety checks apply."}, "create": map[string]string{"label": "New session", "prompt": "Session name"}}, nil
+	case "picker.rename", "picker.delete":
+		if err := sessionstore.ValidateSessionName(r.Input.ID); err != nil {
+			return nil, err
+		}
+		if r.Capability == "picker.rename" {
+			if err := a.run(nil, "rename", r.Input.ID, r.Input.Name); err != nil {
+				return nil, err
+			}
+			return map[string]string{"kind": "updated", "id": r.Input.Name}, nil
+		}
+		if err := a.run(nil, "delete", "--yes", r.Input.ID); err != nil {
+			return nil, err
+		}
+		return map[string]string{"kind": "updated", "id": r.Input.ID}, nil
 	case "picker.create":
 		if err := sessionstore.ValidateSessionName(r.Input.Name); err != nil {
 			return nil, err

@@ -7,6 +7,12 @@
     "seshy-picker"
   ],
   "actions": {
+    "picker.rename": {
+      "description": "Rename a session through sy rename"
+    },
+    "picker.delete": {
+      "description": "Delete a session and owned worktrees through sy delete, with normal safety checks"
+    },
     "provider.validate": {
       "description": "provider.validate"
     },
