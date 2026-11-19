@@ -78,6 +78,10 @@ tasks:
     cmds:
       - rm -rf "$${XDG_STATE_HOME:-$$HOME/.local/state}/seshy"
       - echo "Cleaned up all sessions"
+  test-media:
+    desc: Check media fingerprint refresh and invalid-image rejection
+    cmd: bash hack/test-screenshots.sh
+
   generate:
     desc: Generate schema, README command docs, and shell completions
     cmds:

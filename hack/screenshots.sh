@@ -17,11 +17,19 @@ media_fingerprint() {
 
 media_is_valid() {
   [[ -s $output_dir/seshy.png && -s $output_dir/seshy.gif ]] || return 1
-  [[ $(identify -format '%m' "$output_dir/seshy.png") == PNG ]]
+  [[ $(identify -format '%m' "$output_dir/seshy.png") == PNG ]] || return 1
   [[ $(identify -format '%m' "$output_dir/seshy.gif[0]") == GIF ]]
 }
 
-if [[ ${1:-} == "--check" ]]; then
+if [[ ${1:-} == "--refresh-fingerprint" ]]; then
+  if ! media_is_valid; then
+    echo "ERROR: Seshy media is missing or invalid; regenerate it before refreshing the fingerprint" >&2
+    exit 1
+  fi
+  media_fingerprint > "$output_dir/.seshy-media.sha256"
+fi
+
+if [[ ${1:-} == "--check" || ${1:-} == "--refresh-fingerprint" ]]; then
   expected=$(media_fingerprint)
   current=$(cat "$output_dir/.seshy-media.sha256" 2> /dev/null || true)
   if [[ $current != "$expected" ]] || ! media_is_valid; then

@@ -79,6 +79,7 @@
             doCheck = true;
             checkPhase = ''
               runHook preCheck
+              go vet ./...
               go test -race ./...
               bash test/integration/run_tests.sh
               bash test/e2e/run_e2e.sh
@@ -231,6 +232,7 @@
               ''
                 cd ${./.}
                 bash ./hack/screenshots.sh --check
+                bash ./hack/test-screenshots.sh
                 touch "$out"
               '';
         }
