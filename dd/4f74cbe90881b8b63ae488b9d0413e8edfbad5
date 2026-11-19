@@ -1,0 +1,19 @@
+AGENTS.md
+  s_0404ee690a300f::t_7a8a6926168876 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd4f74cbe90881b8b63ae488b9d0413e8edfbad5",
+  "prompts": {},
+  "sessions": {
+    "s_0404ee690a300f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d1cc-9dc0-72c0-bb00-2d70e54676e2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Roshan Bhatia <rshnbhatia@gmail.com>"
+    }
+  }
+}
